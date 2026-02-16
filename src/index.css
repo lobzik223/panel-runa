@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #f8f9fa;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Фон страницы входа — фирменная гамма RUNA */
+.login-page-bg {
+  background: linear-gradient(
+    160deg,
+    #0f0f0f 0%,
+    #1a1510 25%,
+    #2d1f14 50%,
+    #3d2a18 70%,
+    #C45C26 88%,
+    #D4A84B 100%
+  );
+  background-size: 200% 200%;
+  animation: login-bg-shift 14s ease infinite;
+}
+
+@keyframes login-bg-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
