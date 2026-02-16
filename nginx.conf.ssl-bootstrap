@@ -12,6 +12,9 @@ server {
     root /var/www/panel-runa;
     index index.html;
 
+    access_log /var/log/nginx/panel-runafinance-access.log;
+    error_log /var/log/nginx/panel-runafinance-error.log;
+
     # Обязательно первым: certbot (^~ = не проверять другие location)
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;

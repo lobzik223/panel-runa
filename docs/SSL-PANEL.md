@@ -99,6 +99,35 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
+## 500 Internal Server Error или 404 у пользователей
+
+**500** чаще всего из‑за того, что Nginx не может отдать файлы: нет каталога или нет `index.html`. **404** — неверный путь или пустой root.
+
+На сервере выполни:
+
+```bash
+# 1. Есть ли каталог и что в нём
+sudo ls -la /var/www/panel-runa/
+
+# Должны быть index.html и папка assets/. Если пусто или каталога нет — собрать панель и скопировать:
+# cd ~/panel-runa && npm run build && sudo mkdir -p /var/www/panel-runa && sudo cp -r dist/* /var/www/panel-runa/
+
+# 2. Права (nginx читает от пользователя www-data)
+sudo chown -R www-data:www-data /var/www/panel-runa
+sudo chmod -R u=rX,g=rX,o=rX /var/www/panel-runa
+
+# 3. Что пишет Nginx в ошибках (после воспроизведения 500/404)
+sudo tail -50 /var/log/nginx/panel-runafinance-error.log
+# или общий лог, если отдельный не настроен:
+sudo tail -50 /var/log/nginx/error.log
+```
+
+Если в логе есть `open() "/var/www/panel-runa/..." failed (2: No such file or directory)` — в каталоге нет нужного файла (часто `index.html`). Собери панель заново и скопируй содержимое `dist/` в `/var/www/panel-runa/`.
+
+Если уже включён полный конфиг с **HTTPS** (nginx.conf), а сертификата для panel ещё нет — Nginx при старте может ругаться на отсутствие сертификатов, или при обращении по HTTPS отдавать ошибку. В таком случае временно используй снова `nginx.conf.ssl-bootstrap` (только HTTP), получи сертификат, потом переключись на полный конфиг.
+
+---
+
 ## Если что-то не так
 
 - **Всё ещё «Не защищено»** — убедись, что открываешь именно **https://**panel.runafinance.online (не http).
