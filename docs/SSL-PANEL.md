@@ -69,6 +69,36 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
+## Если certbot пишет «Invalid response» / отдаётся HTML вместо токена
+
+Значит запрос к `/.well-known/acme-challenge/...` отдаёт страницу панели (index.html), а не файл из `/var/www/certbot`. Сделай:
+
+1. **Проверь, что стоит именно bootstrap-конфиг для panel:**
+   ```bash
+   sudo cat /etc/nginx/sites-enabled/panel.runafinance.online
+   ```
+   В нём должен быть блок `location ^~ /.well-known/acme-challenge/` с `root /var/www/certbot;`. Если нет — скопируй заново из репозитория `nginx.conf.ssl-bootstrap` и перезагрузи nginx.
+
+2. **Убедись, что для panel нет другого конфига** (например default или общий server на 80), который обрабатывает этот домен раньше. Список сайтов:
+   ```bash
+   ls -la /etc/nginx/sites-enabled/
+   ```
+
+3. **Перезагрузи nginx после правок:**
+   ```bash
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+4. **Проверь вручную** (подставь любой путь — должен быть 404, но не HTML панели):
+   ```bash
+   curl -I http://panel.runafinance.online/.well-known/acme-challenge/test
+   ```
+   Ожидается `404 Not Found` с nginx, без редиректа на страницу логина. Если в ответе видишь `Content-Type: text/html` и саму страницу — значит запрос всё ещё обрабатывает другой server/location; поправь конфиг и повтори.
+
+5. **Повтори certbot** после исправления конфига.
+
+---
+
 ## Если что-то не так
 
 - **Всё ещё «Не защищено»** — убедись, что открываешь именно **https://**panel.runafinance.online (не http).

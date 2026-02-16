@@ -12,8 +12,10 @@ server {
     root /var/www/panel-runa;
     index index.html;
 
-    location /.well-known/acme-challenge/ {
+    # Обязательно первым: certbot (^~ = не проверять другие location)
+    location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
+        default_type text/plain;
         try_files $uri =404;
     }
 
