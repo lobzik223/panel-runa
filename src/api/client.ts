@@ -39,3 +39,76 @@ export async function getMe(): Promise<AdminUser> {
   const { data } = await api.get<AdminUser>('/admin/me');
   return data;
 }
+
+export interface DashboardStats {
+  usersOnline: number;
+  subscriptionsActive: number;
+  usersToday: number;
+  newRegistrations: number;
+  chartData: { date: string; count: number }[];
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const { data } = await api.get<DashboardStats>('/admin/stats/dashboard');
+  return data;
+}
+
+export interface UserListItem {
+  id: number;
+  email: string | null;
+  name: string;
+  phoneE164: string | null;
+  createdAt: string;
+  premiumUntil: string | null;
+  trialUntil: string | null;
+  blockedUntil: string | null;
+  subscription: {
+    status: string;
+    currentPeriodEnd: string | null;
+    productId: string | null;
+  } | null;
+}
+
+export async function getUsers(params: { search?: string; page?: number; limit?: number }) {
+  const { data } = await api.get<{ items: UserListItem[]; total: number; page: number; limit: number }>('/admin/users', {
+    params: { search: params.search || undefined, page: params.page ?? 1, limit: params.limit ?? 20 },
+  });
+  return data;
+}
+
+export interface PromoCodeItem {
+  id: string;
+  code: string;
+  name: string;
+  discountRubles: number;
+  validFrom: string;
+  validUntil: string;
+  createdAt: string;
+  paymentsCount: number;
+}
+
+export async function getPromoCodes(): Promise<PromoCodeItem[]> {
+  const { data } = await api.get<PromoCodeItem[]>('/admin/promocodes');
+  return data;
+}
+
+export async function createPromoCode(dto: { code: string; name: string; discountRubles: number; validUntil: string }) {
+  const { data } = await api.post<PromoCodeItem>('/admin/promocodes', dto);
+  return data;
+}
+
+export async function createPaymentLink(body: {
+  planId: string;
+  emailOrId: string;
+  promoCodeId?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
+}) {
+  const { data } = await api.post<{ confirmationUrl: string; paymentId: string }>('/admin/payments/create-link', body);
+  return data;
+}
+
+export async function getPlans(): Promise<{ id: string; durationMonths: number; price: number; description: string }[]> {
+  const { data } = await api.get('/payments/plans');
+  return data;
+}
