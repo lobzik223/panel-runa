@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// В продакшене: VITE_API_URL=https://api.runafinance.online (при сборке). Локально — относительный /api (прокси Vite).
-const API_BASE = typeof import.meta.env.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL.replace(/\/$/, '') + '/api'
-  : '/api';
+// В продакшене задай VITE_API_URL при сборке (или в .env.production). Локально — относительный /api.
+const raw = typeof import.meta.env.VITE_API_URL === 'string' ? import.meta.env.VITE_API_URL.trim() : '';
+const base = raw ? raw.replace(/\/+$/, '') : '';
+const API_BASE = base ? (base.endsWith('/api') ? base : `${base}/api`) : '/api';
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -62,6 +62,7 @@ export interface UserListItem {
   premiumUntil: string | null;
   trialUntil: string | null;
   blockedUntil: string | null;
+  blockReason: string | null;
   subscription: {
     status: string;
     currentPeriodEnd: string | null;
@@ -69,10 +70,36 @@ export interface UserListItem {
   } | null;
 }
 
+export interface UserDetail extends UserListItem {
+  deletionRequestedAt: string | null;
+  scheduledDeleteAt: string | null;
+  subscription: {
+    status: string;
+    currentPeriodEnd: string | null;
+    productId: string | null;
+    store: string | null;
+  } | null;
+}
+
 export async function getUsers(params: { search?: string; page?: number; limit?: number }) {
   const { data } = await api.get<{ items: UserListItem[]; total: number; page: number; limit: number }>('/admin/users', {
     params: { search: params.search || undefined, page: params.page ?? 1, limit: params.limit ?? 20 },
   });
+  return data;
+}
+
+export async function getUser(id: number): Promise<UserDetail> {
+  const { data } = await api.get<UserDetail>(`/admin/users/${id}`);
+  return data;
+}
+
+export async function blockUser(id: number, body: { reason?: string; until?: string }) {
+  const { data } = await api.post<{ success: boolean }>(`/admin/users/${id}/block`, body);
+  return data;
+}
+
+export async function unblockUser(id: number) {
+  const { data } = await api.post<{ success: boolean }>(`/admin/users/${id}/unblock`, {});
   return data;
 }
 

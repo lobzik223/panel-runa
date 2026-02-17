@@ -21,7 +21,7 @@ const CARD_COLORS = {
   week: { bg: 'from-teal-500/10 to-teal-500/5', text: 'text-teal-600', icon: '#14b8a6' },
 };
 
-const DONUT_COLORS = ['#93c5fd', '#fde047', '#f9a8d4', '#86efac'];
+const DONUT_COLORS = ['#C45C26', '#0d9488', '#475569', '#d97706'];
 
 function CardSparkline({ points }: { points: number[] }) {
   const safe = points.length >= 2 ? points : [0, 0];
