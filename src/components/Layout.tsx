@@ -41,12 +41,17 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <img src="/logonoruna.png" alt="RUNA" className="h-10 object-contain" />
-          <p className="mt-3 text-center text-sm font-semibold tracking-tight text-gray-700">
-            Runa Finance Panel
-          </p>
+      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+        <div className="pt-4 px-4 pb-3 border-b border-gray-100">
+          <div className="flex flex-col items-center gap-2">
+            <img src="/logonoruna.png" alt="RUNA" className="h-11 object-contain" />
+            <p className="text-center text-sm font-semibold text-runa-dark tracking-tight leading-tight">
+              Runa Finance
+            </p>
+            <p className="text-center text-xs font-medium text-runa-orange tracking-wide uppercase">
+              Панель управления
+            </p>
+          </div>
         </div>
         <nav className="p-3 flex-1">
           {nav.map(({ to, label, icon }) => (

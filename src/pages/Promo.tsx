@@ -1,19 +1,11 @@
 import { useEffect, useState } from 'react';
-import {
-  getPromoCodes,
-  createPromoCode,
-  createPaymentLink,
-  getPlans,
-  type PromoCodeItem,
-} from '../api/client';
+import { getPromoCodes, createPromoCode, type PromoCodeItem } from '../api/client';
 
 export default function Promo() {
   const [list, setList] = useState<PromoCodeItem[]>([]);
-  const [plans, setPlans] = useState<{ id: string; durationMonths: number; price: number; description: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -23,21 +15,12 @@ export default function Promo() {
     discountRubles: 0,
     validUntil: '',
   });
-  const [paymentForm, setPaymentForm] = useState({
-    planId: '',
-    emailOrId: '',
-    promoCodeId: '',
-    confirmationUrl: '',
-  });
 
   const load = () => {
     setLoading(true);
     setError(null);
-    Promise.all([getPromoCodes(), getPlans()])
-      .then(([codes, plansList]) => {
-        setList(codes);
-        setPlans(Array.isArray(plansList) ? plansList : []);
-      })
+    getPromoCodes()
+      .then((codes) => setList(codes))
       .catch((e) => setError(e.response?.data?.message || 'Ошибка загрузки'))
       .finally(() => setLoading(false));
   };
@@ -70,29 +53,6 @@ export default function Promo() {
       .finally(() => setSubmitting(false));
   };
 
-  const handleCreatePayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paymentForm.planId || !paymentForm.emailOrId) {
-      setMessage('Укажите тариф и email или ID пользователя');
-      return;
-    }
-    setSubmitting(true);
-    setMessage(null);
-    createPaymentLink({
-      planId: paymentForm.planId,
-      emailOrId: paymentForm.emailOrId,
-      promoCodeId: paymentForm.promoCodeId || undefined,
-      returnUrl: undefined,
-      cancelUrl: undefined,
-    })
-      .then((res) => {
-        setPaymentForm((prev) => ({ ...prev, confirmationUrl: res.confirmationUrl }));
-        setMessage('Ссылка создана. Откройте в новой вкладке или скопируйте.');
-      })
-      .catch((e) => setMessage(e.response?.data?.message || 'Ошибка создания ссылки'))
-      .finally(() => setSubmitting(false));
-  };
-
   const now = new Date();
   const defaultValidUntil = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate()).toISOString().slice(0, 10);
 
@@ -109,17 +69,13 @@ export default function Promo() {
       <div className="flex flex-wrap gap-3 mb-6">
         <button
           type="button"
-          onClick={() => { setCreateOpen(true); setPaymentOpen(false); setMessage(null); }}
+          onClick={() => {
+            setCreateOpen(true);
+            setMessage(null);
+          }}
           className="px-4 py-2 bg-runa-orange text-white rounded-lg hover:bg-runa-orange-light font-medium"
         >
           Создать промокод
-        </button>
-        <button
-          type="button"
-          onClick={() => { setPaymentOpen(true); setCreateOpen(false); setMessage(null); setPaymentForm((p) => ({ ...p, confirmationUrl: '' })); }}
-          className="px-4 py-2 border border-runa-orange text-runa-orange rounded-lg hover:bg-runa-orange/10 font-medium"
-        >
-          Создать платёж ЮKassa (с промокодом)
         </button>
       </div>
 
@@ -155,7 +111,7 @@ export default function Promo() {
                 type="number"
                 min={0}
                 value={form.discountRubles || ''}
-                onChange={(e) => setForm((f) => ({ ...f, discountRubles: parseInt(e.target.value, 10) || 0 }))}
+                onChange={(e) => setForm((f) => ({ ...f, discountRubles: Number.parseInt(e.target.value, 10) || 0 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>
@@ -183,93 +139,6 @@ export default function Promo() {
                 className="px-4 py-2 border border-gray-300 rounded-lg"
               >
                 Отмена
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {paymentOpen && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6 max-w-md">
-          <h3 className="font-medium text-gray-800 mb-4">Ссылка на оплату ЮKassa</h3>
-          <form onSubmit={handleCreatePayment} className="space-y-3">
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">Тариф</label>
-              <select
-                value={paymentForm.planId}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, planId: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                required
-              >
-                <option value="">Выберите тариф</option>
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.description} — {p.price} ₽
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">Email или ID пользователя</label>
-              <input
-                type="text"
-                value={paymentForm.emailOrId}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, emailOrId: e.target.value }))}
-                placeholder="user@example.com или 12345"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">Промокод (необязательно)</label>
-              <select
-                value={paymentForm.promoCodeId}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, promoCodeId: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="">Без промокода</option>
-                {list.filter((p) => new Date(p.validUntil) >= now).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} (−{p.discountRubles} ₽)
-                  </option>
-                ))}
-              </select>
-            </div>
-            {paymentForm.confirmationUrl && (
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Ссылка на оплату</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={paymentForm.confirmationUrl}
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm"
-                  />
-                  <a
-                    href={paymentForm.confirmationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-2 bg-runa-orange text-white rounded-lg text-sm whitespace-nowrap"
-                  >
-                    Открыть
-                  </a>
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 bg-runa-orange text-white rounded-lg hover:bg-runa-orange-light disabled:opacity-50"
-              >
-                {submitting ? 'Создание…' : 'Получить ссылку'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg"
-              >
-                Закрыть
               </button>
             </div>
           </form>
