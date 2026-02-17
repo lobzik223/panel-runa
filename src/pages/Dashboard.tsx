@@ -251,11 +251,15 @@ export default function Dashboard() {
                     layout="vertical"
                     align="right"
                     verticalAlign="middle"
-                    formatter={(value, entry) => (
-                      <span className="text-sm text-gray-600">
-                        {value} <span className="text-gray-400 font-normal">({entry?.payload?.count ?? 0})</span>
-                      </span>
-                    )}
+                    formatter={(name, entry) => {
+                      const payload = entry?.payload as { value?: number } | undefined;
+                      const num = payload?.value ?? 0;
+                      return (
+                        <span className="text-sm text-gray-600">
+                          {name} <span className="text-gray-400 font-normal">({num})</span>
+                        </span>
+                      );
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
