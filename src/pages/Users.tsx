@@ -25,7 +25,6 @@ export default function Users() {
   const [blockReason, setBlockReason] = useState('');
   const [blockReasonPreset, setBlockReasonPreset] = useState('');
   const [blockDurationPreset, setBlockDurationPreset] = useState<number>(7); // 1, 7, 30, or -1 for forever
-  const [blockUntil, setBlockUntil] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [grantDays, setGrantDays] = useState(30);
   const [reduceDays, setReduceDays] = useState(7);
@@ -105,7 +104,6 @@ export default function Users() {
       .catch(() => setSelectedUser(null))
       .finally(() => setLoadingDetail(false));
     setBlockReason('');
-    setBlockUntil('');
     setBlockReasonPreset('');
     setBlockDurationPreset(7);
   }, []);
