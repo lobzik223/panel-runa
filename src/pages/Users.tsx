@@ -23,13 +23,44 @@ export default function Users() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [blockSubmitting, setBlockSubmitting] = useState(false);
   const [blockReason, setBlockReason] = useState('');
+  const [blockReasonPreset, setBlockReasonPreset] = useState('');
+  const [blockDurationPreset, setBlockDurationPreset] = useState<number>(7); // 1, 7, 30, or -1 for forever
   const [blockUntil, setBlockUntil] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [grantDays, setGrantDays] = useState(30);
   const [reduceDays, setReduceDays] = useState(7);
   const [subSubmitting, setSubSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    action: 'grant' | 'reduce' | 'revoke' | 'block' | 'unblock';
+    payload?: { days?: number; reason?: string; until?: string };
+  } | null>(null);
+  const [passwordModal, setPasswordModal] = useState<{ open: boolean; password: string; error: string | null }>({
+    open: false,
+    password: '',
+    error: null,
+  });
 
   const limit = 20;
+  const SUBSCRIPTION_PRESETS = [
+    { days: 30, label: '1 мес.' },
+    { days: 90, label: '3 мес.' },
+    { days: 180, label: '6 мес.' },
+    { days: 365, label: '1 год' },
+  ] as const;
+  const BLOCK_REASONS = [
+    { value: 'Спам', label: 'Спам' },
+    { value: 'Нарушение правил', label: 'Нарушение правил' },
+    { value: 'Мошенничество', label: 'Мошенничество' },
+    { value: '', label: 'Другое (указать ниже)' },
+  ] as const;
+  const BLOCK_DURATIONS = [
+    { days: 1, label: '1 день' },
+    { days: 7, label: '7 дней' },
+    { days: 30, label: '30 дней' },
+    { days: -1, label: 'Навсегда' },
+  ] as const;
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedEmail(searchByEmail), 400);
@@ -75,70 +106,109 @@ export default function Users() {
       .finally(() => setLoadingDetail(false));
     setBlockReason('');
     setBlockUntil('');
+    setBlockReasonPreset('');
+    setBlockDurationPreset(7);
   }, []);
 
   const handleBlock = () => {
     if (!selectedUser) return;
-    setBlockSubmitting(true);
-    blockUser(selectedUser.id, {
-      reason: blockReason || 'Заблокировано администратором',
-      until: blockUntil || undefined,
-    })
-      .then(() => {
-        openUser(selectedUser.id);
-        setRefreshKey((k) => k + 1);
-      })
-      .catch(() => {})
-      .finally(() => setBlockSubmitting(false));
+    const reason = blockReasonPreset === '' ? (blockReason || 'Заблокировано администратором') : blockReasonPreset;
+    const until =
+      blockDurationPreset === -1
+        ? new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString()
+        : new Date(Date.now() + blockDurationPreset * 24 * 60 * 60 * 1000).toISOString();
+    setConfirmDialog({
+      title: 'Подтверждение блокировки',
+      message: `Заблокировать пользователя ${selectedUser.name} (ID ${selectedUser.id})? Причина: ${reason}. Срок: ${blockDurationPreset === -1 ? 'навсегда' : blockDurationPreset + ' дн.'}`,
+      action: 'block',
+      payload: { reason, until },
+    });
   };
 
   const handleUnblock = () => {
     if (!selectedUser) return;
-    setBlockSubmitting(true);
-    unblockUser(selectedUser.id)
-      .then(() => {
-        openUser(selectedUser.id);
-        setRefreshKey((k) => k + 1);
-      })
-      .catch(() => {})
-      .finally(() => setBlockSubmitting(false));
+    setConfirmDialog({
+      title: 'Разблокировать',
+      message: `Разблокировать пользователя ${selectedUser.name}?`,
+      action: 'unblock',
+    });
   };
 
   const handleGrantSub = () => {
     if (!selectedUser) return;
-    setSubSubmitting(true);
-    grantSubscription(selectedUser.id, grantDays)
-      .then(() => {
-        openUser(selectedUser.id);
-        setRefreshKey((k) => k + 1);
-      })
-      .catch(() => {})
-      .finally(() => setSubSubmitting(false));
+    setConfirmDialog({
+      title: 'Выдать подписку',
+      message: `Выдать подписку на ${grantDays} дней пользователю ${selectedUser.name}?`,
+      action: 'grant',
+      payload: { days: grantDays },
+    });
   };
 
   const handleReduceSub = () => {
     if (!selectedUser) return;
-    setSubSubmitting(true);
-    reduceSubscription(selectedUser.id, reduceDays)
-      .then(() => {
-        openUser(selectedUser.id);
-        setRefreshKey((k) => k + 1);
-      })
-      .catch(() => {})
-      .finally(() => setSubSubmitting(false));
+    setConfirmDialog({
+      title: 'Уменьшить подписку',
+      message: `Уменьшить подписку на ${reduceDays} дней у пользователя ${selectedUser.name}?`,
+      action: 'reduce',
+      payload: { days: reduceDays },
+    });
   };
 
   const handleRevokeSub = () => {
     if (!selectedUser) return;
-    if (!window.confirm('Убрать подписку у пользователя? Доступ к Premium будет отключён.')) return;
+    setConfirmDialog({
+      title: 'Убрать подписку',
+      message: `Убрать подписку полностью у пользователя ${selectedUser.name}? Доступ к Premium будет отключён.`,
+      action: 'revoke',
+    });
+  };
+
+  const [pendingAction, setPendingAction] = useState<typeof confirmDialog>(null);
+
+  const onConfirmDialogConfirm = () => {
+    if (!confirmDialog) return;
+    setPendingAction(confirmDialog);
+    setConfirmDialog(null);
+    setPasswordModal({ open: true, password: '', error: null });
+  };
+
+  const submitPassword = () => {
+    const p = passwordModal.password.trim();
+    if (!p) {
+      setPasswordModal((m) => ({ ...m, error: 'Введите пароль' }));
+      return;
+    }
+    if (!pendingAction || !selectedUser) return;
+    setPasswordModal((m) => ({ ...m, error: null }));
+    setBlockSubmitting(true);
     setSubSubmitting(true);
-    revokeSubscription(selectedUser.id)
-      .then(() => {
-        openUser(selectedUser.id);
-        setRefreshKey((k) => k + 1);
-      })
-      .catch(() => {})
-      .finally(() => setSubSubmitting(false));
+    const done = () => {
+      setPendingAction(null);
+      setPasswordModal({ open: false, password: '', error: null });
+      setSubSubmitting(false);
+      setBlockSubmitting(false);
+    };
+    if (pendingAction.action === 'grant' && pendingAction.payload?.days) {
+      grantSubscription(selectedUser.id, pendingAction.payload.days, p)
+        .then(() => { openUser(selectedUser.id); setRefreshKey((k) => k + 1); done(); })
+        .catch((e) => { setPasswordModal((m) => ({ ...m, error: e.response?.data?.message || 'Ошибка' })); setSubSubmitting(false); setBlockSubmitting(false); });
+    } else if (pendingAction.action === 'reduce' && pendingAction.payload?.days) {
+      reduceSubscription(selectedUser.id, pendingAction.payload.days, p)
+        .then(() => { openUser(selectedUser.id); setRefreshKey((k) => k + 1); done(); })
+        .catch((e) => { setPasswordModal((m) => ({ ...m, error: e.response?.data?.message || 'Ошибка' })); setSubSubmitting(false); setBlockSubmitting(false); });
+    } else if (pendingAction.action === 'revoke') {
+      revokeSubscription(selectedUser.id, p)
+        .then(() => { openUser(selectedUser.id); setRefreshKey((k) => k + 1); done(); })
+        .catch((e) => { setPasswordModal((m) => ({ ...m, error: e.response?.data?.message || 'Ошибка' })); setSubSubmitting(false); setBlockSubmitting(false); });
+    } else if (pendingAction.action === 'block' && pendingAction.payload?.until !== undefined) {
+      blockUser(selectedUser.id, { reason: pendingAction.payload.reason ?? 'Заблокировано администратором', until: pendingAction.payload.until, password: p })
+        .then(() => { openUser(selectedUser.id); setRefreshKey((k) => k + 1); done(); })
+        .catch((e) => { setPasswordModal((m) => ({ ...m, error: e.response?.data?.message || 'Ошибка' })); setSubSubmitting(false); setBlockSubmitting(false); });
+    } else if (pendingAction.action === 'unblock') {
+      unblockUser(selectedUser.id, p)
+        .then(() => { openUser(selectedUser.id); setRefreshKey((k) => k + 1); done(); })
+        .catch((e) => { setPasswordModal((m) => ({ ...m, error: e.response?.data?.message || 'Ошибка' })); setSubSubmitting(false); setBlockSubmitting(false); });
+    }
   };
 
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
@@ -389,36 +459,38 @@ export default function Users() {
                   </div>
                 );
               })()}
-              <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-sm text-gray-600">Добавить (дней к подписке):</span>
-                {[7, 30, 90, 365].map((d) => (
+              <p className="text-sm text-gray-600 mb-2">Выберите срок подписки (от 1 месяца до 1 года), затем нажмите «Выдать подписку» и подтвердите.</p>
+              <div className="flex flex-wrap gap-2 items-center mb-3">
+                {SUBSCRIPTION_PRESETS.map(({ days, label }) => (
                   <button
-                    key={d}
+                    key={days}
                     type="button"
-                    onClick={() => setGrantDays(d)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${grantDays === d ? 'bg-runa-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    onClick={() => setGrantDays(days)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium ${grantDays === days ? 'bg-runa-orange text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   >
-                    {d} дн.
+                    {label}
                   </button>
                 ))}
+                <span className="text-sm text-gray-500">или</span>
                 <input
                   type="number"
                   min={1}
-                  max={360}
+                  max={365}
                   value={grantDays}
                   onChange={(e) => setGrantDays(Number(e.target.value) || 30)}
-                  className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                  className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={handleGrantSub}
-                  disabled={subSubmitting}
-                  className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-                >
-                  {subSubmitting ? '…' : 'Добавить'}
-                </button>
+                <span className="text-sm text-gray-500">дн.</span>
               </div>
-              <div className="flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                onClick={handleGrantSub}
+                disabled={subSubmitting}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              >
+                {subSubmitting ? '…' : 'Выдать подписку'}
+              </button>
+              <div className="flex flex-wrap gap-2 items-center mb-3">
                 <span className="text-sm text-gray-600">Уменьшить на:</span>
                 <input
                   type="number"
@@ -447,7 +519,8 @@ export default function Users() {
                 Убрать подписку полностью
               </button>
             </div>
-            <div className="p-6 border-t border-gray-100 space-y-3">
+            <div className="p-6 border-t border-gray-100 space-y-4">
+              <h3 className="font-medium text-gray-800">Блокировка</h3>
               {isBlocked ? (
                 <button
                   type="button"
@@ -459,30 +532,115 @@ export default function Users() {
                 </button>
               ) : (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Причина блокировки (необязательно)"
-                    value={blockReason}
-                    onChange={(e) => setBlockReason(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                  <input
-                    type="datetime-local"
-                    placeholder="Заблокировать до"
-                    value={blockUntil}
-                    onChange={(e) => setBlockUntil(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
+                  <p className="text-sm text-gray-600">Нарушение (причина):</p>
+                  <div className="flex flex-wrap gap-2">
+                    {BLOCK_REASONS.map((r) => (
+                      <button
+                        key={r.label}
+                        type="button"
+                        onClick={() => setBlockReasonPreset(r.value)}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${blockReasonPreset === r.value ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                  {blockReasonPreset === '' && (
+                    <input
+                      type="text"
+                      placeholder="Укажите причину блокировки"
+                      value={blockReason}
+                      onChange={(e) => setBlockReason(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  )}
+                  <p className="text-sm text-gray-600 mt-2">Срок блокировки:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {BLOCK_DURATIONS.map((d) => (
+                      <button
+                        key={d.label}
+                        type="button"
+                        onClick={() => setBlockDurationPreset(d.days)}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${blockDurationPreset === d.days ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
                   <button
                     type="button"
                     onClick={handleBlock}
                     disabled={blockSubmitting}
-                    className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
+                    className="w-full py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 mt-2"
                   >
                     {blockSubmitting ? '…' : 'Заблокировать'}
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="font-semibold text-gray-800 mb-2">{confirmDialog.title}</h3>
+            <p className="text-gray-600 text-sm mb-4">{confirmDialog.message}</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmDialog(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={onConfirmDialogConfirm}
+                className="px-4 py-2 bg-runa-orange text-white rounded-lg text-sm font-medium hover:bg-runa-orange-light"
+              >
+                Подтвердить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {passwordModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="font-semibold text-gray-800 mb-2">Подтверждение паролем</h3>
+            <p className="text-gray-600 text-sm mb-3">Введите пароль от вашего аккаунта администратора.</p>
+            <input
+              type="password"
+              placeholder="Пароль"
+              value={passwordModal.password}
+              onChange={(e) => setPasswordModal((m) => ({ ...m, password: e.target.value, error: null }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2"
+              autoFocus
+            />
+            {passwordModal.error && (
+              <p className="text-red-600 text-sm mb-2">{passwordModal.error}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setPasswordModal({ open: false, password: '', error: null });
+                  setPendingAction(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={submitPassword}
+                className="px-4 py-2 bg-runa-orange text-white rounded-lg text-sm font-medium hover:bg-runa-orange-light"
+              >
+                Подтвердить
+              </button>
             </div>
           </div>
         </div>

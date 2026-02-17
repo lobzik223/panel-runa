@@ -121,34 +121,39 @@ export async function getUser(id: number): Promise<UserDetail> {
   return data;
 }
 
-export async function blockUser(id: number, body: { reason?: string; until?: string }) {
+export async function verifyAdminPassword(password: string): Promise<{ valid: boolean }> {
+  const { data } = await api.post<{ valid: boolean }>('/admin/auth/verify-password', { password });
+  return data;
+}
+
+export async function blockUser(id: number, body: { reason?: string; until?: string; password: string }) {
   const { data } = await api.post<{ success: boolean }>(`/admin/users/${id}/block`, body);
   return data;
 }
 
-export async function unblockUser(id: number) {
-  const { data } = await api.post<{ success: boolean }>(`/admin/users/${id}/unblock`, {});
+export async function unblockUser(id: number, password: string) {
+  const { data } = await api.post<{ success: boolean }>(`/admin/users/${id}/unblock`, { password });
   return data;
 }
 
-export async function grantSubscription(userId: number, days: number) {
+export async function grantSubscription(userId: number, days: number, password: string) {
   const { data } = await api.post<{ success: boolean; premiumUntil: string | null }>(
     `/admin/users/${userId}/subscription/grant`,
-    { days },
+    { days, password },
   );
   return data;
 }
 
-export async function reduceSubscription(userId: number, days: number) {
+export async function reduceSubscription(userId: number, days: number, password: string) {
   const { data } = await api.post<{ success: boolean; premiumUntil: string | null }>(
     `/admin/users/${userId}/subscription/reduce`,
-    { days },
+    { days, password },
   );
   return data;
 }
 
-export async function revokeSubscription(userId: number) {
-  const { data } = await api.post<{ success: boolean }>(`/admin/users/${userId}/subscription/revoke`, {});
+export async function revokeSubscription(userId: number, password: string) {
+  const { data } = await api.post<{ success: boolean }>(`/admin/users/${userId}/subscription/revoke`, { password });
   return data;
 }
 

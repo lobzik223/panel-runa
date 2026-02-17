@@ -1,4 +1,7 @@
+import { useEffect, useRef, useCallback } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+
+const SESSION_TIMEOUT_MS = 3 * 60 * 1000; // 3 минуты бездействия
 
 const iconDashboard = (
   <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -32,12 +35,27 @@ export default function Layout() {
   const navigate = useNavigate();
   const userJson = localStorage.getItem('admin_user');
   const user = userJson ? (JSON.parse(userJson) as { email: string; name?: string | null }) : null;
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     navigate('/login', { replace: true });
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    const resetTimer = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(logout, SESSION_TIMEOUT_MS);
+    };
+    resetTimer();
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((e) => window.addEventListener(e, resetTimer));
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [logout]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
