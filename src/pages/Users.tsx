@@ -358,8 +358,39 @@ export default function Users() {
 
             <div className="p-6 border-t border-gray-100 space-y-4">
               <h3 className="font-medium text-gray-800">Управление подпиской</h3>
+              {(() => {
+                const sub = selectedUser.subscription;
+                const endStr = sub?.currentPeriodEnd ?? selectedUser.premiumUntil;
+                const startStr = sub?.currentPeriodStart ?? null;
+                const endDate = endStr ? new Date(endStr) : null;
+                const now = new Date();
+                const isActive = endDate && endDate > now;
+                const daysLeft = endDate && endDate > now
+                  ? Math.ceil((endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+                  : null;
+                return (
+                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-100 mb-4">
+                    <p className="text-sm font-medium text-gray-700 mb-1">Текущая подписка</p>
+                    {!endStr ? (
+                      <p className="text-gray-500 text-sm">Нет активной подписки</p>
+                    ) : (
+                      <ul className="text-sm text-gray-600 space-y-0.5">
+                        {startStr && (
+                          <li>Период: с {new Date(startStr).toLocaleDateString('ru')} по {new Date(endStr).toLocaleDateString('ru')}</li>
+                        )}
+                        {!startStr && <li>Действует до: {new Date(endStr).toLocaleDateString('ru')}</li>}
+                        {daysLeft != null && (
+                          <li className={isActive ? 'text-green-600 font-medium' : ''}>
+                            {isActive ? `Осталось дней: ${daysLeft}` : 'Подписка истекла'}
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-sm text-gray-600">Добавить (тариф по дням):</span>
+                <span className="text-sm text-gray-600">Добавить (дней к подписке):</span>
                 {[7, 30, 90, 365].map((d) => (
                   <button
                     key={d}

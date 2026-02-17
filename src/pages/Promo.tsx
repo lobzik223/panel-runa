@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getPromoCodes, createPromoCode, getPromoStats, type PromoCodeItem, type PromoStats } from '../api/client';
+import { getPromoCodes, createPromoCode, getPromoStats, deletePromoCode, type PromoCodeItem, type PromoStats } from '../api/client';
 
 export default function Promo() {
   const [list, setList] = useState<PromoCodeItem[]>([]);
@@ -12,6 +12,7 @@ export default function Promo() {
   const [statsPromoId, setStatsPromoId] = useState<string | null>(null);
   const [stats, setStats] = useState<PromoStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     code: '',
@@ -67,6 +68,20 @@ export default function Promo() {
       })
       .catch((e) => setMessage(e.response?.data?.message || 'Ошибка создания'))
       .finally(() => setSubmitting(false));
+  };
+
+  const handleDeletePromo = (e: React.MouseEvent, promoId: string, code: string) => {
+    e.stopPropagation();
+    if (!window.confirm(`Удалить промокод «${code}» полностью? Он станет недействительным.`)) return;
+    setDeletingId(promoId);
+    deletePromoCode(promoId)
+      .then(() => {
+        setMessage('Промокод удалён.');
+        load();
+        if (statsPromoId === promoId) setStatsPromoId(null);
+      })
+      .catch((err) => setMessage(err.response?.data?.message || 'Ошибка удаления'))
+      .finally(() => setDeletingId(null));
   };
 
   const now = new Date();
@@ -198,6 +213,7 @@ export default function Promo() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Скидка</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действует до</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Оплат</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -218,10 +234,23 @@ export default function Promo() {
                   <td className="px-4 py-3 text-sm font-medium text-gray-800">{p.code}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{p.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {p.discountType === 'PERCENT' ? `${p.discountValue}%` : `${p.discountValue} ₽`}
+                    {String(p.discountType || 'RUB').toUpperCase() === 'PERCENT'
+                      ? `${Number(p.discountValue ?? 0)}%`
+                      : `${Number(p.discountValue ?? 0)} ₽`}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{new Date(p.validUntil).toLocaleDateString('ru')}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{p.paymentsCount}</td>
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeletePromo(e, p.id, p.code)}
+                      disabled={deletingId === p.id}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
+                      title="Удалить промокод"
+                    >
+                      {deletingId === p.id ? '…' : 'Удалить'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

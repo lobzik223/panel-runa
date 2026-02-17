@@ -90,6 +90,7 @@ export interface UserDetail extends UserListItem {
   scheduledDeleteAt: string | null;
   subscription: {
     status: string;
+    currentPeriodStart: string | null;
     currentPeriodEnd: string | null;
     productId: string | null;
     store: string | null;
@@ -189,6 +190,11 @@ export async function createPromoCode(dto: {
 
 export async function getPromoStats(id: string): Promise<PromoStats> {
   const { data } = await api.get<PromoStats>(`/admin/promocodes/${id}/stats`);
+  return data;
+}
+
+export async function deletePromoCode(id: string): Promise<{ success: boolean }> {
+  const { data } = await api.delete<{ success: boolean }>(`/admin/promocodes/${id}`);
   return data;
 }
 
