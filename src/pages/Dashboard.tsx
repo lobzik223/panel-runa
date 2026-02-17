@@ -19,6 +19,7 @@ const CARD_COLORS = {
   subscriptions: { bg: 'from-emerald-500/10 to-emerald-500/5', text: 'text-emerald-600', icon: '#10b981' },
   today: { bg: 'from-amber-500/10 to-amber-500/5', text: 'text-amber-600', icon: '#f59e0b' },
   week: { bg: 'from-teal-500/10 to-teal-500/5', text: 'text-teal-600', icon: '#14b8a6' },
+  deleted: { bg: 'from-slate-500/10 to-slate-500/5', text: 'text-slate-600', icon: '#64748b' },
 };
 
 const DONUT_COLORS = ['#C45C26', '#0d9488', '#475569', '#d97706'];
@@ -45,6 +46,8 @@ export default function Dashboard() {
     usersToday: number;
     newRegistrations: number;
     chartData: { date: string; count: number }[];
+    deletedAccounts: number;
+    serverStatus: { database: 'ok' | 'error'; server: string };
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export default function Dashboard() {
       <p className="text-sm text-gray-500 mb-1">Главная &gt; DashBoard</p>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Обзор</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
         <div
           className={`relative bg-gradient-to-br ${CARD_COLORS.online.bg} rounded-2xl border border-gray-100 p-5 shadow-md overflow-hidden min-h-[120px] flex flex-col justify-between`}
         >
@@ -172,7 +175,42 @@ export default function Dashboard() {
           </div>
           <CardSparkline points={chartPoints.slice(-7)} />
         </div>
+
+        <div
+          className={`relative bg-gradient-to-br ${CARD_COLORS.deleted.bg} rounded-2xl border border-gray-100 p-5 shadow-md overflow-hidden min-h-[120px] flex flex-col justify-between`}
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-0.5">Удалённые аккаунты</p>
+              <p className={`text-2xl font-bold ${CARD_COLORS.deleted.text}`}>{s.deletedAccounts ?? 0}</p>
+              <p className="text-xs text-gray-500 mt-1">ожидают удаления</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center shadow-sm">
+              <svg className="w-5 h-5" fill="none" stroke={CARD_COLORS.deleted.icon} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {s.serverStatus && (
+        <div className="mb-6 p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-wrap items-center gap-6">
+          <h3 className="font-semibold text-gray-800 w-full md:w-auto">Состояние сервера</h3>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium ${s.serverStatus.database === 'ok' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+              <span className={`w-2 h-2 rounded-full ${s.serverStatus.database === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              База данных: {s.serverStatus.database === 'ok' ? 'работает' : 'ошибка'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              Сервер: работает
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 shadow-md">

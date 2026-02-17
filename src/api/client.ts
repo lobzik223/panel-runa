@@ -46,6 +46,8 @@ export interface DashboardStats {
   usersToday: number;
   newRegistrations: number;
   chartData: { date: string; count: number }[];
+  deletedAccounts: number;
+  serverStatus: { database: 'ok' | 'error'; server: string };
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -70,6 +72,19 @@ export interface UserListItem {
   } | null;
 }
 
+export interface SubscriptionHistoryItem {
+  action: string;
+  details: string | null;
+  createdAt: string;
+}
+
+export interface BlockHistoryItem {
+  blockedAt: string;
+  blockedUntil: string | null;
+  reason: string | null;
+  unblockedAt: string | null;
+}
+
 export interface UserDetail extends UserListItem {
   deletionRequestedAt: string | null;
   scheduledDeleteAt: string | null;
@@ -79,11 +94,23 @@ export interface UserDetail extends UserListItem {
     productId: string | null;
     store: string | null;
   } | null;
+  subscriptionHistory: SubscriptionHistoryItem[];
+  blockHistory: BlockHistoryItem[];
 }
 
-export async function getUsers(params: { search?: string; page?: number; limit?: number }) {
+export async function getUsers(params: {
+  search?: string;
+  userId?: number;
+  page?: number;
+  limit?: number;
+}) {
   const { data } = await api.get<{ items: UserListItem[]; total: number; page: number; limit: number }>('/admin/users', {
-    params: { search: params.search || undefined, page: params.page ?? 1, limit: params.limit ?? 20 },
+    params: {
+      search: params.search || undefined,
+      userId: params.userId != null ? String(params.userId) : undefined,
+      page: params.page ?? 1,
+      limit: params.limit ?? 20,
+    },
   });
   return data;
 }
@@ -103,15 +130,45 @@ export async function unblockUser(id: number) {
   return data;
 }
 
+export async function grantSubscription(userId: number, days: number) {
+  const { data } = await api.post<{ success: boolean; premiumUntil: string | null }>(
+    `/admin/users/${userId}/subscription/grant`,
+    { days },
+  );
+  return data;
+}
+
+export async function reduceSubscription(userId: number, days: number) {
+  const { data } = await api.post<{ success: boolean; premiumUntil: string | null }>(
+    `/admin/users/${userId}/subscription/reduce`,
+    { days },
+  );
+  return data;
+}
+
+export async function revokeSubscription(userId: number) {
+  const { data } = await api.post<{ success: boolean }>(`/admin/users/${userId}/subscription/revoke`, {});
+  return data;
+}
+
 export interface PromoCodeItem {
   id: string;
   code: string;
   name: string;
-  discountRubles: number;
+  discountType: 'RUB' | 'PERCENT';
+  discountValue: number;
   validFrom: string;
   validUntil: string;
   createdAt: string;
   paymentsCount: number;
+}
+
+export interface PromoStats {
+  code: string;
+  usersCount: number;
+  paymentsCount: number;
+  byPlan: { planId: string; count: number }[];
+  totalAmountRub: number;
 }
 
 export async function getPromoCodes(): Promise<PromoCodeItem[]> {
@@ -119,8 +176,19 @@ export async function getPromoCodes(): Promise<PromoCodeItem[]> {
   return data;
 }
 
-export async function createPromoCode(dto: { code: string; name: string; discountRubles: number; validUntil: string }) {
+export async function createPromoCode(dto: {
+  code: string;
+  name: string;
+  discountType: 'RUB' | 'PERCENT';
+  discountValue: number;
+  validUntil: string;
+}) {
   const { data } = await api.post<PromoCodeItem>('/admin/promocodes', dto);
+  return data;
+}
+
+export async function getPromoStats(id: string): Promise<PromoStats> {
+  const { data } = await api.get<PromoStats>(`/admin/promocodes/${id}/stats`);
   return data;
 }
 
