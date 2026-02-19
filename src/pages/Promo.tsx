@@ -28,6 +28,9 @@ export default function Promo() {
     return list.filter((p) => p.code.toUpperCase().includes(q) || p.name.toUpperCase().includes(q));
   }, [list, search]);
 
+  const now = new Date();
+  const defaultValidUntil = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate()).toISOString().slice(0, 10);
+
   const load = () => {
     setLoading(true);
     setError(null);
@@ -91,9 +94,6 @@ export default function Promo() {
       .catch((err) => setMessage(err.response?.data?.message || 'Ошибка удаления'))
       .finally(() => setDeletingId(null));
   };
-
-  const now = new Date();
-  const defaultValidUntil = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate()).toISOString().slice(0, 10);
 
   return (
     <div>
