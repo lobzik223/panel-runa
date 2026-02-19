@@ -41,9 +41,17 @@ export default function Promo() {
     load();
   }, []);
 
+  // При открытии формы создания подставляем дату по умолчанию в state, чтобы не требовалось кликать по полю
+  useEffect(() => {
+    if (createOpen && !form.validUntil) {
+      setForm((f) => ({ ...f, validUntil: defaultValidUntil }));
+    }
+  }, [createOpen, defaultValidUntil]);
+
   const handleCreatePromo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.validUntil) {
+    const validUntil = form.validUntil || defaultValidUntil;
+    if (!validUntil) {
       setMessage('Укажите дату окончания');
       return;
     }
@@ -58,7 +66,7 @@ export default function Promo() {
       name: form.name,
       discountType: form.discountType,
       discountValue: form.discountValue,
-      validUntil: form.validUntil,
+      validUntil,
     })
       .then(() => {
         setForm({ code: '', name: '', discountType: 'RUB', discountValue: 0, validUntil: '' });
