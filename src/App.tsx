@@ -9,6 +9,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LoginView />} />
         <Route path="/panel/*" element={<Dashboard />} />
+        {/* Регистрации на сайте нет — старые ссылки с поисковиков/закладок на экран входа */}
+        <Route path="/register" element={<Navigate to="/" replace />} />
+        <Route path="/verify-email" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ThemeProvider>
