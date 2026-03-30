@@ -1,0 +1,454 @@
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════ */
+.layout {
+  min-height: 100vh;
+  display: flex;
+  background: #f0f2f5;
+  transition: background 0.3s var(--ease-smooth);
+}
+
+.dark {
+  background: #0c0c0f;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════ */
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #111118;
+  transition: width 0.3s var(--ease-smooth), min-width 0.3s var(--ease-smooth);
+}
+
+.sidebarInner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 16px 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ───── LOGO ───── */
+.logoBlock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 14px;
+  margin-bottom: 8px;
+}
+
+.logoBlock::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.logoGlow {
+  position: absolute;
+  top: -20px;
+  left: -10px;
+  width: 120px;
+  height: 80px;
+  background: radial-gradient(ellipse, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.logo {
+  height: 110px;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.logo:hover {
+  transform: scale(1.04);
+}
+
+/* ───── NAV ───── */
+.nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-smooth);
+  overflow: hidden;
+}
+
+.navItem:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.navDot {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--gradient-accent);
+  transition: transform 0.25s var(--ease-spring);
+}
+
+.navActive .navDot {
+  transform: translateY(-50%) scaleY(1);
+}
+
+.navActive {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.navActive .navIcon {
+  background: var(--gradient-accent);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.navActive .navSvg {
+  color: #fff;
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  transition: all 0.25s var(--ease-smooth);
+}
+
+.navSvg {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.45);
+  transition: color 0.2s;
+}
+
+.navItem:hover .navSvg {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.navLabel {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ───── SIDEBAR FOOTER ───── */
+.sidebarFoot {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Theme toggle */
+.themeSwitch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-sm);
+}
+
+.themeBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.35);
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.themeBtn:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.themeBtnOn {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.15);
+}
+
+.themeSvg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Admin card */
+.adminCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.adminAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gradient-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.adminInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.adminName {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.2;
+}
+
+.adminRole {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+/* Logout */
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-smooth);
+}
+
+.logoutBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.logoutSvg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAIN
+   ═══════════════════════════════════════════════════════ */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f0f2f5;
+  transition: background 0.3s var(--ease-smooth);
+}
+
+.dark .main {
+  background: #0c0c0f;
+}
+
+/* ───── TOP BAR ───── */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 36px 0;
+}
+
+.topLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pageTitle {
+  font-size: 26px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.3px;
+  transition: color 0.2s;
+}
+
+.dark .pageTitle {
+  color: #f3f4f6;
+}
+
+.pageGreeting {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.dark .pageGreeting {
+  color: #6b7280;
+}
+
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clockChip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.dark .clockChip {
+  background: #1a1a1f;
+  border-color: #2a2a30;
+}
+
+.clockTime {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.dark .clockTime {
+  color: #f3f4f6;
+}
+
+.clockDate {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+.dark .clockDate {
+  color: #6b7280;
+}
+
+/* ───── CONTENT ───── */
+.content {
+  flex: 1;
+  padding: 24px 36px 48px;
+  overflow: auto;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 72px;
+    min-width: 72px;
+  }
+  .sidebarInner {
+    padding: 20px 10px;
+    align-items: center;
+  }
+  .logoBlock {
+    padding: 0 0 20px;
+    justify-content: center;
+  }
+  .logo {
+    max-width: 48px;
+    height: 52px;
+  }
+  .logoBadge {
+    display: none;
+  }
+  .navItem {
+    justify-content: center;
+    padding: 12px;
+  }
+  .navLabel {
+    display: none;
+  }
+  .navIcon {
+    width: 38px;
+    height: 38px;
+  }
+  .themeSwitch {
+    flex-direction: column;
+  }
+  .adminCard {
+    padding: 8px;
+    justify-content: center;
+  }
+  .adminInfo {
+    display: none;
+  }
+  .logoutBtn span:not(.logoutSvg) {
+    display: none;
+  }
+  .topBar {
+    padding: 20px 24px 0;
+  }
+  .content {
+    padding: 20px 24px 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .topBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 16px 0;
+  }
+  .content {
+    padding: 16px 16px 32px;
+  }
+}

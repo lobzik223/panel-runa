@@ -1,0 +1,163 @@
+.apiError {
+  font-size: 14px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  line-height: 1.45;
+}
+
+.apiErrorDark {
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.35);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.badgeNeutral {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.badgeNeutralDark {
+  background: rgba(107, 114, 128, 0.25);
+  color: #9ca3af;
+}
+
+.periodBlock {
+  margin-top: 28px;
+}
+
+.periodBlockDark .barTrack {
+  background: #374151;
+}
+
+.blockTitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 6px;
+}
+
+.blockTitleDark {
+  color: #e5e7eb;
+}
+
+.blockHint {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.blockHintDark {
+  color: #9ca3af;
+}
+
+.periodGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.periodRow {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.periodRow:last-child {
+  border-bottom: none;
+}
+
+.periodBlockDark .periodRow {
+  border-bottom-color: #2c2c2e;
+}
+
+.periodLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.periodLabelDark {
+  color: #e5e7eb;
+}
+
+.periodBars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.barWrap {
+  display: grid;
+  grid-template-columns: 80px 1fr 48px;
+  align-items: center;
+  gap: 12px;
+}
+
+.barLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.barLabelDark {
+  color: #9ca3af;
+}
+
+.barTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.contentBlockDark .barTrack {
+  background: #374151;
+}
+
+.barFillCreated {
+  height: 100%;
+  border-radius: 4px;
+  background: #10b981;
+  min-width: 4px;
+  transition: width 0.25s ease;
+}
+
+.barFillDeleted {
+  height: 100%;
+  border-radius: 4px;
+  background: #ef4444;
+  min-width: 4px;
+  transition: width 0.25s ease;
+}
+
+.barValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: right;
+}
+
+.barValueDark {
+  color: #e5e7eb;
+}
+
+@media (max-width: 640px) {
+  .periodRow {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .barWrap {
+    grid-template-columns: 70px 1fr 40px;
+  }
+}

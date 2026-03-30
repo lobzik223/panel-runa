@@ -1,0 +1,297 @@
+/* ═══ STATUS BADGES (хранилище) ═══ */
+.statusBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.statusOk { color: #059669; background: rgba(5, 150, 105, 0.12); }
+.statusWarning { color: #d97706; background: rgba(217, 119, 6, 0.12); }
+.statusCritical { color: #dc2626; background: rgba(220, 38, 38, 0.12); }
+
+/* ═══ STORAGE BAR ═══ */
+.storageBarWrap { margin-top: 12px; margin-bottom: 4px; }
+.storageBarTrack {
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: #e5e7eb;
+  overflow: hidden;
+}
+.storageBarTrack.dk { background: #374151; }
+.storageBarFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--gradient-accent);
+  min-width: 4px;
+  transition: width 0.4s var(--ease-spring);
+}
+.storageBarLabel { font-size: 12px; color: #6b7280; margin-top: 6px; display: block; }
+.storageBarLabel.dk { color: #9ca3af; }
+
+/* ═══ TRAFFIC BLOCK ═══ */
+.trafficBlock { margin-top: 24px; }
+.blockTitle { font-size: 17px; font-weight: 700; color: #111827; margin-bottom: 6px; }
+.blockTitleDark { color: #f3f4f6; }
+.blockHint { font-size: 13px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; }
+.blockHint.dk { color: #9ca3af; }
+
+.chartArea {
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 20px 16px 12px;
+  margin-top: 8px;
+}
+.chartArea.dk {
+  background: linear-gradient(180deg, #1a1a1f 0%, #151518 100%);
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 180px;
+  padding: 0 4px;
+}
+.chartBar {
+  flex: 1;
+  min-width: 12px;
+  max-width: 28px;
+  border-radius: 6px 6px 0 0;
+  background: var(--gradient-accent);
+  min-height: 8px;
+  transition: transform 0.2s var(--ease-spring), opacity 0.2s;
+  opacity: 0.9;
+}
+.chartBar:hover {
+  opacity: 1;
+  transform: scaleY(1.02);
+  transform-origin: bottom;
+}
+
+.chartLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 0 4px;
+  font-size: 10px;
+  color: #9ca3af;
+  font-variant-numeric: tabular-nums;
+}
+.chartLabels.dk { color: #6b7280; }
+.chartLabel { flex: 1; min-width: 0; text-align: center; }
+
+/* ═══ ТОКЕНЫ НЕЙРОСЕТИ GROK ═══ */
+.tokensBlock { margin-top: 24px; }
+.tokensWidgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+.tokenWidget {
+  padding: 20px 22px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.04) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+.tokenWidget.dk {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.06) 100%);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+.tokenWidgetLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+.tokenWidgetValue {
+  font-size: 26px;
+  font-weight: 800;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  display: block;
+}
+.tokenWidgetValue.dk { color: #f3f4f6; }
+.tokenWidgetUnit {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 2px;
+  display: block;
+}
+.tokenWidgetUnit.dk { color: #9ca3af; }
+
+/* ═══ DATABASE BLOCK ═══ */
+.dbBlock { margin-top: 24px; }
+.dbWidgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.dbWidget {
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  background: #f9fafb;
+  border: 1px solid #f0f2f5;
+}
+.dbWidget.dk { background: #151518; border-color: #222228; }
+.dbWidgetLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+.dbWidgetValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+.dbWidgetValue.dk { color: #f3f4f6; }
+
+.dbStatus { font-size: 14px; font-weight: 700; }
+.dbStatusOk { color: #059669; }
+.dbStatusError { color: #dc2626; }
+
+.dbErrors { margin-top: 16px; }
+.dbErrorsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+  display: block;
+}
+.dbErrorsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dbErrorsItem {
+  font-size: 13px;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.15);
+  margin-bottom: 6px;
+  font-family: ui-monospace, monospace;
+}
+.dbErrorsItem.dk {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
+}
+
+.dbNoErrors {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.15);
+  font-size: 14px;
+  font-weight: 600;
+  color: #059669;
+  margin-top: 8px;
+}
+.dbNoErrors.dk {
+  background: rgba(5, 150, 105, 0.12);
+  border-color: rgba(5, 150, 105, 0.25);
+  color: #6ee7b7;
+}
+.dbNoErrorsIcon { font-size: 18px; font-weight: 800; }
+
+/* ═══ DDoS-атаки ═══ */
+.ddosBlock { margin-top: 24px; }
+.ddosStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.ddosStatusLabel { font-size: 13px; font-weight: 600; color: #6b7280; }
+.ddosBadge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+}
+.ddosBadgeOk { background: rgba(5, 150, 105, 0.12); color: #059669; }
+.ddosBadgeAlert { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+
+.ddosNoAttacks {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.15);
+  font-size: 14px;
+  font-weight: 600;
+  color: #059669;
+}
+.ddosNoAttacks.dk {
+  background: rgba(5, 150, 105, 0.12);
+  border-color: rgba(5, 150, 105, 0.25);
+  color: #6ee7b7;
+}
+.ddosNoAttacksIcon { font-size: 20px; }
+
+.ddosList { display: flex; flex-direction: column; gap: 16px; }
+.ddosCard {
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  background: #fafbfc;
+  border: 1px solid #e8eaed;
+  border-left: 4px solid #dc2626;
+}
+.ddosCard.dk {
+  background: #151518;
+  border-color: #222228;
+  border-left-color: #dc2626;
+}
+.ddosCardHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ddosCardDate { font-size: 14px; font-weight: 700; color: #111827; }
+.ddosCardDate.dk { color: #f3f4f6; }
+.ddosCardTime { font-size: 13px; font-weight: 600; color: #6b7280; font-variant-numeric: tabular-nums; }
+.ddosCardTime.dk { color: #9ca3af; }
+.ddosCardSection { margin-bottom: 12px; }
+.ddosCardSection:last-child { margin-bottom: 0; }
+.ddosCardLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 4px;
+}
+.ddosCardText {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.55;
+  margin: 0;
+}
+.ddosCardText.dk { color: #d1d5db; }
+.ddosCardResolution.dk { color: #9ca3af; }
+.ddosCardResolution { color: #059669; }
+.ddosCard.dk .ddosCardResolution { color: #6ee7b7; }
