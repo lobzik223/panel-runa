@@ -51,32 +51,29 @@ export function setAdminToken(token: string | null): void {
   }
 }
 
-/** Заголовки для /admin: JWT после POST /admin/login (2FA) или X-Admin-Key (legacy / dev). */
+/** Заголовки для /admin: JWT после POST /admin/auth/login или X-Admin-Key (dev / скрипты). */
 function getAdminAuthHeaders(): Record<string, string> {
   const jwt = getAdminToken()?.trim();
   if (jwt) return { Authorization: `Bearer ${jwt}` };
   const key = import.meta.env.VITE_ADMIN_API_KEY?.trim();
   if (key) return { 'X-Admin-Key': key };
   throw new Error(
-    'Нет доступа к админ-API: войдите с ключом и TOTP (2FA) или задайте VITE_ADMIN_API_KEY для dev без 2FA на бэкенде.'
+    'Нет доступа к админ-API: войдите по email и паролю или задайте VITE_ADMIN_API_KEY (только dev).'
   );
 }
 
-/**
- * Вход при включённом на сервере ADMIN_TOTP_SECRET: ключ панели + код из приложения-аутентификатора.
- */
-export async function loginAdminWithTotp(adminKey: string, totp: string): Promise<{ token: string }> {
+export async function loginPanelAdmin(email: string, password: string): Promise<{ token: string }> {
   const base = getApiBase();
-  const path = '/admin/login';
+  const path = '/admin/auth/login';
   const url = base ? `${base}${path}` : path;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: adminKey.trim(), totp: totp.trim() }),
+    body: JSON.stringify({ email, password }),
   });
   const data = (await res.json().catch(() => ({}))) as { token?: string; error?: string; code?: string };
-  if (res.status === 503 && data.code === 'ADMIN_2FA_DISABLED') {
-    throw new Error('ADMIN_2FA_DISABLED');
+  if (data.code === 'EMAIL_NOT_VERIFIED') {
+    throw new Error('EMAIL_NOT_VERIFIED');
   }
   if (!res.ok || !data.token) {
     const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
@@ -84,6 +81,53 @@ export async function loginAdminWithTotp(adminKey: string, totp: string): Promis
   }
   setAdminToken(data.token);
   return { token: data.token };
+}
+
+export async function registerPanelAdmin(body: {
+  email: string;
+  password: string;
+  inviteCode: string;
+}): Promise<void> {
+  const base = getApiBase();
+  const path = '/admin/auth/register';
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+  if (!res.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`);
+  }
+}
+
+export async function verifyEmailFromToken(token: string): Promise<string> {
+  const base = getApiBase();
+  const qs = new URLSearchParams({ token });
+  const path = `/admin/auth/verify-email?${qs.toString()}`;
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url);
+  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
+  if (!res.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`);
+  }
+  return typeof data.message === 'string' ? data.message : 'Email подтверждён.';
+}
+
+export async function resendPanelVerification(email: string): Promise<void> {
+  const base = getApiBase();
+  const path = '/admin/auth/resend-verification';
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const data = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`);
+  }
 }
 
 function networkHint(url: string): string {

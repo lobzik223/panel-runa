@@ -186,6 +186,25 @@
   color: #f87171;
 }
 
+.footerLink {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 14px;
+}
+
+.footerLink a {
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.footerLink a:hover {
+  text-decoration: underline;
+}
+
+.wrapDark .footerLink a {
+  color: #a5b4fc;
+}
+
 @media (max-width: 480px) {
   .card {
     padding: 28px 20px;

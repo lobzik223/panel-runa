@@ -22,7 +22,7 @@ import { ServerPage } from '@/sections/ServerPage';
 import { RulesPage } from '@/sections/RulesPage';
 import { ReferralStatsPage } from '@/sections/ReferralStatsPage';
 import { DataLinksPage } from '@/sections/DataLinksPage';
-import { setAdminToken } from '@/lib/adminApi';
+import { getAdminToken, setAdminToken } from '@/lib/adminApi';
 import s from './Dashboard.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
@@ -80,6 +80,14 @@ export function Dashboard() {
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const now = useClock();
+
+  useEffect(() => {
+    const jwt = getAdminToken()?.trim();
+    const devKey = import.meta.env.VITE_ADMIN_API_KEY?.trim();
+    if (!jwt && !devKey) {
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
 
   const handleLogout = () => {
     setAdminToken(null);
