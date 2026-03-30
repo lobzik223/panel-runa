@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { loginPanelAdmin } from '@/lib/adminApi';
 import styles from './LoginView.module.css';
@@ -25,7 +25,7 @@ export function LoginView() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('EMAIL_NOT_VERIFIED')) {
-        setErrorText('Подтвердите email по ссылке из письма. Можно запросить повтор на странице регистрации.');
+        setErrorText('Аккаунт не активирован. Создайте пользователя на сервере: npm run create-panel-admin (см. документацию бэкенда).');
       } else {
         setErrorText(msg);
       }
@@ -98,9 +98,6 @@ export function LoginView() {
           <button type="submit" className={styles.enterBtn} disabled={loading}>
             {loading ? 'Вход…' : 'Войти'}
           </button>
-          <p className={styles.footerLink}>
-            <Link to="/register">Регистрация по коду приглашения</Link>
-          </p>
         </form>
       </div>
     </div>

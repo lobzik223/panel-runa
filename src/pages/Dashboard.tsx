@@ -22,7 +22,7 @@ import { ServerPage } from '@/sections/ServerPage';
 import { RulesPage } from '@/sections/RulesPage';
 import { ReferralStatsPage } from '@/sections/ReferralStatsPage';
 import { DataLinksPage } from '@/sections/DataLinksPage';
-import { getAdminToken, setAdminToken } from '@/lib/adminApi';
+import { getAdminDisplayName, getAdminToken, setAdminToken } from '@/lib/adminApi';
 import s from './Dashboard.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
@@ -94,6 +94,7 @@ export function Dashboard() {
     navigate('/');
   };
   const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
+  const adminLabel = getAdminDisplayName() || 'Admin';
 
   return (
     <div className={`${s.layout} ${isDark ? s.dark : ''}`}>
@@ -147,10 +148,10 @@ export function Dashboard() {
             {/* Admin profile */}
             <div className={s.adminCard}>
               <div className={s.adminAvatar}>
-                <span>A</span>
+                <span>{adminLabel.charAt(0).toUpperCase()}</span>
               </div>
               <div className={s.adminInfo}>
-                <span className={s.adminName}>Admin</span>
+                <span className={s.adminName}>{adminLabel}</span>
                 <span className={s.adminRole}>Администратор</span>
               </div>
             </div>
@@ -168,7 +169,9 @@ export function Dashboard() {
         <header className={s.topBar}>
           <div className={s.topLeft}>
             <h1 className={s.pageTitle}>{pageTitle}</h1>
-            <p className={s.pageGreeting}>{getGreeting(now)}, Admin</p>
+            <p className={s.pageGreeting}>
+              {getGreeting(now)}, {adminLabel}
+            </p>
           </div>
           <div className={s.topRight}>
             <div className={s.clockChip}>

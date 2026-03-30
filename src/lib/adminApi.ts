@@ -18,6 +18,7 @@ export type DashboardStats = {
 };
 
 const ADMIN_JWT_STORAGE_KEY = 'seepromnt_admin_jwt';
+const ADMIN_NAME_STORAGE_KEY = 'seepromnt_admin_name';
 
 /**
  * В dev: пустой VITE_API_URL → относительные URL (`/admin/...`), Vite проксирует на 127.0.0.1:4000.
@@ -45,9 +46,20 @@ export function getAdminToken(): string | null {
 export function setAdminToken(token: string | null): void {
   try {
     if (token) sessionStorage.setItem(ADMIN_JWT_STORAGE_KEY, token);
-    else sessionStorage.removeItem(ADMIN_JWT_STORAGE_KEY);
+    else {
+      sessionStorage.removeItem(ADMIN_JWT_STORAGE_KEY);
+      sessionStorage.removeItem(ADMIN_NAME_STORAGE_KEY);
+    }
   } catch {
     /* ignore */
+  }
+}
+
+export function getAdminDisplayName(): string | null {
+  try {
+    return sessionStorage.getItem(ADMIN_NAME_STORAGE_KEY);
+  } catch {
+    return null;
   }
 }
 
@@ -71,7 +83,12 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const data = (await res.json().catch(() => ({}))) as { token?: string; error?: string; code?: string };
+  const data = (await res.json().catch(() => ({}))) as {
+    token?: string;
+    error?: string;
+    code?: string;
+    name?: string;
+  };
   if (data.code === 'EMAIL_NOT_VERIFIED') {
     throw new Error('EMAIL_NOT_VERIFIED');
   }
@@ -80,54 +97,14 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
     throw new Error(msg);
   }
   setAdminToken(data.token);
+  try {
+    if (typeof data.name === 'string' && data.name.trim()) {
+      sessionStorage.setItem(ADMIN_NAME_STORAGE_KEY, data.name.trim());
+    }
+  } catch {
+    /* ignore */
+  }
   return { token: data.token };
-}
-
-export async function registerPanelAdmin(body: {
-  email: string;
-  password: string;
-  inviteCode: string;
-}): Promise<void> {
-  const base = getApiBase();
-  const path = '/admin/auth/register';
-  const url = base ? `${base}${path}` : path;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
-  if (!res.ok) {
-    throw new Error(typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`);
-  }
-}
-
-export async function verifyEmailFromToken(token: string): Promise<string> {
-  const base = getApiBase();
-  const qs = new URLSearchParams({ token });
-  const path = `/admin/auth/verify-email?${qs.toString()}`;
-  const url = base ? `${base}${path}` : path;
-  const res = await fetch(url);
-  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
-  if (!res.ok) {
-    throw new Error(typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`);
-  }
-  return typeof data.message === 'string' ? data.message : 'Email подтверждён.';
-}
-
-export async function resendPanelVerification(email: string): Promise<void> {
-  const base = getApiBase();
-  const path = '/admin/auth/resend-verification';
-  const url = base ? `${base}${path}` : path;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  });
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) {
-    throw new Error(typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`);
-  }
 }
 
 function networkHint(url: string): string {
