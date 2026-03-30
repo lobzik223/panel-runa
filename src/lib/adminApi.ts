@@ -19,6 +19,7 @@ export type DashboardStats = {
 
 const ADMIN_JWT_STORAGE_KEY = 'seepromnt_admin_jwt';
 const ADMIN_NAME_STORAGE_KEY = 'seepromnt_admin_name';
+const ADMIN_ROLE_STORAGE_KEY = 'seepromnt_admin_role';
 
 /**
  * В dev: пустой VITE_API_URL → относительные URL (`/admin/...`), Vite проксирует на 127.0.0.1:4000.
@@ -49,6 +50,7 @@ export function setAdminToken(token: string | null): void {
     else {
       sessionStorage.removeItem(ADMIN_JWT_STORAGE_KEY);
       sessionStorage.removeItem(ADMIN_NAME_STORAGE_KEY);
+      sessionStorage.removeItem(ADMIN_ROLE_STORAGE_KEY);
     }
   } catch {
     /* ignore */
@@ -61,6 +63,30 @@ export function getAdminDisplayName(): string | null {
   } catch {
     return null;
   }
+}
+
+/** Роль из ответа логина: `superadmin` | `admin` */
+export function getAdminRole(): string | null {
+  try {
+    return sessionStorage.getItem(ADMIN_ROLE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Подпись роли для UI (RU). */
+export function formatAdminRoleRu(role: string | null | undefined): string {
+  const r = (role || '').toLowerCase();
+  if (r === 'superadmin') return 'Главный администратор';
+  if (r === 'admin') return 'Администратор';
+  return 'Администратор';
+}
+
+/** Заголовок X-Seepromnt-Panel-Key — тот же секрет, что ADMIN_PANEL_CLIENT_SECRET на бэкенде. */
+function getPanelClientSecretHeaders(): Record<string, string> {
+  const s = import.meta.env.VITE_ADMIN_PANEL_CLIENT_SECRET?.trim();
+  if (!s) return {};
+  return { 'X-Seepromnt-Panel-Key': s };
 }
 
 /** Заголовки для /admin: JWT после POST /admin/auth/login или X-Admin-Key (dev / скрипты). */
@@ -80,7 +106,10 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
   const url = base ? `${base}${path}` : path;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPanelClientSecretHeaders(),
+    },
     body: JSON.stringify({ email, password }),
   });
   const data = (await res.json().catch(() => ({}))) as {
@@ -88,6 +117,7 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
     error?: string;
     code?: string;
     name?: string;
+    role?: string;
   };
   if (data.code === 'EMAIL_NOT_VERIFIED') {
     throw new Error('EMAIL_NOT_VERIFIED');
@@ -100,6 +130,9 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
   try {
     if (typeof data.name === 'string' && data.name.trim()) {
       sessionStorage.setItem(ADMIN_NAME_STORAGE_KEY, data.name.trim());
+    }
+    if (typeof data.role === 'string' && data.role.trim()) {
+      sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, data.role.trim());
     }
   } catch {
     /* ignore */
@@ -123,7 +156,10 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   let res: Response;
   try {
     res = await fetch(url, {
-      headers: auth,
+      headers: {
+        ...getPanelClientSecretHeaders(),
+        ...auth,
+      },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -192,6 +228,7 @@ async function adminRequest(path: string, init?: RequestInit): Promise<Response>
     return await fetch(url, {
       ...init,
       headers: {
+        ...getPanelClientSecretHeaders(),
         ...auth,
         ...init?.headers,
       },

@@ -22,7 +22,13 @@ import { ServerPage } from '@/sections/ServerPage';
 import { RulesPage } from '@/sections/RulesPage';
 import { ReferralStatsPage } from '@/sections/ReferralStatsPage';
 import { DataLinksPage } from '@/sections/DataLinksPage';
-import { getAdminDisplayName, getAdminToken, setAdminToken } from '@/lib/adminApi';
+import {
+  formatAdminRoleRu,
+  getAdminDisplayName,
+  getAdminRole,
+  getAdminToken,
+  setAdminToken,
+} from '@/lib/adminApi';
 import s from './Dashboard.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
@@ -95,6 +101,7 @@ export function Dashboard() {
   };
   const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
   const adminLabel = getAdminDisplayName() || 'Admin';
+  const adminRoleLabel = formatAdminRoleRu(getAdminRole());
 
   return (
     <div className={`${s.layout} ${isDark ? s.dark : ''}`}>
@@ -152,7 +159,7 @@ export function Dashboard() {
               </div>
               <div className={s.adminInfo}>
                 <span className={s.adminName}>{adminLabel}</span>
-                <span className={s.adminRole}>Администратор</span>
+                <span className={s.adminRole}>{adminRoleLabel}</span>
               </div>
             </div>
 
