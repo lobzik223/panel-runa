@@ -85,9 +85,9 @@
 }
 
 .logo {
-  height: 92px;
+  height: 148px;
   width: auto;
-  max-width: 360px;
+  max-width: min(100%, 420px);
   object-fit: contain;
   object-position: center;
   filter: brightness(0);
@@ -195,7 +195,7 @@
     right: 16px;
   }
   .logo {
-    height: 76px;
-    max-width: 300px;
+    height: 120px;
+    max-width: min(100%, 360px);
   }
 }

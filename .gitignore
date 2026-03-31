@@ -4,3 +4,5 @@ dist
 .env.local
 *.log
 .DS_Store
+# Кэш TypeScript (tsc -b); на сервере после build мешает git pull
+*.tsbuildinfo
