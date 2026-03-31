@@ -28,6 +28,7 @@ import {
   getAdminRole,
   getAdminToken,
   setAdminToken,
+  fetchAdminProfile,
 } from '@/lib/adminApi';
 import s from './Dashboard.module.css';
 
@@ -80,12 +81,15 @@ const PAGE_TITLES: Record<string, string> = {
   '/panel/data-links': 'Графики и данные',
 };
 
+const IDLE_MS = 4 * 60 * 1000;
+
 export function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const now = useClock();
+  const [adminLabel, setAdminLabel] = useState(() => getAdminDisplayName() || 'Администратор');
 
   useEffect(() => {
     const jwt = getAdminToken()?.trim();
@@ -95,12 +99,57 @@ export function Dashboard() {
     }
   }, [navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const jwt = getAdminToken()?.trim();
+    const devKey = import.meta.env.VITE_ADMIN_API_KEY?.trim();
+    if (!jwt && devKey) return;
+    if (!jwt) return;
+    void (async () => {
+      const profile = await fetchAdminProfile();
+      if (cancelled) return;
+      if (!profile) {
+        navigate('/', { replace: true });
+        return;
+      }
+      if (profile.name?.trim()) {
+        setAdminLabel(profile.name.trim());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setAdminToken(null);
+        navigate('/', { replace: true });
+      }, IDLE_MS);
+    };
+    reset();
+    const events: (keyof WindowEventMap)[] = [
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click',
+    ];
+    events.forEach((ev) => globalThis.addEventListener(ev, reset, { passive: true }));
+    return () => {
+      clearTimeout(timer);
+      events.forEach((ev) => globalThis.removeEventListener(ev, reset));
+    };
+  }, [navigate]);
+
   const handleLogout = () => {
     setAdminToken(null);
     navigate('/');
   };
   const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
-  const adminLabel = getAdminDisplayName() || 'Admin';
   const adminRoleLabel = formatAdminRoleRu(getAdminRole());
 
   return (

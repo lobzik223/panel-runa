@@ -20,6 +20,7 @@ export type DashboardStats = {
 const ADMIN_JWT_STORAGE_KEY = 'seepromnt_admin_jwt';
 const ADMIN_NAME_STORAGE_KEY = 'seepromnt_admin_name';
 const ADMIN_ROLE_STORAGE_KEY = 'seepromnt_admin_role';
+const ADMIN_EMAIL_STORAGE_KEY = 'seepromnt_admin_email';
 
 /**
  * В dev: пустой VITE_API_URL → относительные URL (`/admin/...`), Vite проксирует на 127.0.0.1:4000.
@@ -51,6 +52,7 @@ export function setAdminToken(token: string | null): void {
       sessionStorage.removeItem(ADMIN_JWT_STORAGE_KEY);
       sessionStorage.removeItem(ADMIN_NAME_STORAGE_KEY);
       sessionStorage.removeItem(ADMIN_ROLE_STORAGE_KEY);
+      sessionStorage.removeItem(ADMIN_EMAIL_STORAGE_KEY);
     }
   } catch {
     /* ignore */
@@ -73,6 +75,33 @@ export function getAdminRole(): string | null {
     return null;
   }
 }
+
+function setAdminSessionFromProfile(data: {
+  name?: string | null;
+  email?: string | null;
+  role?: string | null;
+}): void {
+  try {
+    if (typeof data.name === 'string' && data.name.trim()) {
+      sessionStorage.setItem(ADMIN_NAME_STORAGE_KEY, data.name.trim());
+    }
+    if (typeof data.email === 'string' && data.email.trim()) {
+      sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, data.email.trim());
+    }
+    if (typeof data.role === 'string' && data.role.trim()) {
+      sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, data.role.trim());
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export type AdminProfileDto = {
+  id: string | null;
+  email: string | null;
+  name: string;
+  role: string;
+};
 
 /** Подпись роли для UI (RU). */
 export function formatAdminRoleRu(role: string | null | undefined): string {
@@ -118,6 +147,7 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
     code?: string;
     name?: string;
     role?: string;
+    email?: string;
   };
   if (data.code === 'EMAIL_NOT_VERIFIED') {
     throw new Error('EMAIL_NOT_VERIFIED');
@@ -133,6 +163,9 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
     }
     if (typeof data.role === 'string' && data.role.trim()) {
       sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, data.role.trim());
+    }
+    if (typeof data.email === 'string' && data.email.trim()) {
+      sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, data.email.trim());
     }
   } catch {
     /* ignore */
@@ -262,6 +295,98 @@ async function adminJson<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(errMsg);
   }
   return res.json() as Promise<T>;
+}
+
+/** Профиль из БД; при 401 сбрасывает сессию. */
+export async function fetchAdminProfile(): Promise<AdminProfileDto | null> {
+  const res = await adminRequest('/admin/auth/me');
+  if (res.status === 401) {
+    setAdminToken(null);
+    return null;
+  }
+  if (!res.ok) {
+    return null;
+  }
+  const data = (await res.json()) as AdminProfileDto;
+  setAdminSessionFromProfile(data);
+  return data;
+}
+
+export type SystemMetricsDto = {
+  process: { uptimeSec: number; nodeVersion: string; pid: number };
+  system: {
+    hostname: string;
+    platform: string;
+    uptimeSec: number;
+    load1: number;
+    load5: number;
+    load15: number;
+    memory: {
+      totalBytes: number;
+      freeBytes: number;
+      usedBytes: number;
+      usedPercent: number | null;
+    };
+  };
+  memory: { rss: number; heapTotal: number; heapUsed: number; external: number };
+  disk: {
+    path: string;
+    totalBytes: number | null;
+    freeBytes: number | null;
+    usedPercent: number | null;
+  } | null;
+  database: { usersTotal: number; panelAdmins: number; ok: boolean };
+  grok: { configured: boolean; keyHint: string };
+  adminApi: { requestsByHourToday: number[]; requestsTodayApprox: number };
+  ddos: {
+    notes: string;
+    incidentsLast7Days: Array<{
+      id: string;
+      date: string;
+      time: string;
+      reason: string;
+      resolution: string;
+    }>;
+  };
+};
+
+export async function fetchSystemMetrics(): Promise<SystemMetricsDto> {
+  return adminJson('/admin/system/metrics');
+}
+
+export type PanelAccessLogEntryDto = {
+  ts: string;
+  ip: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  kind: string;
+  userAgent?: string;
+  note?: string;
+};
+
+export async function fetchSecurityAccessLog(limit = 80): Promise<{ entries: PanelAccessLogEntryDto[] }> {
+  return adminJson(`/admin/security/access-log?limit=${encodeURIComponent(String(limit))}`);
+}
+
+export async function fetchBlockedPanelIps(): Promise<{ ips: string[] } | null> {
+  const res = await adminRequest('/admin/security/blocked-ips');
+  if (res.status === 403) return null;
+  if (!res.ok) return null;
+  return res.json() as Promise<{ ips: string[] }>;
+}
+
+export async function postBlockPanelIp(ip: string): Promise<{ ok: boolean; blocked: string[] }> {
+  return adminJson('/admin/security/block-ip', {
+    method: 'POST',
+    body: JSON.stringify({ ip }),
+  });
+}
+
+export async function deleteBlockPanelIp(ip: string): Promise<{ ok: boolean; blocked: string[] }> {
+  return adminJson(`/admin/security/block-ip/${encodeURIComponent(ip)}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function fetchBlockedUsers(): Promise<{ users: AdminUserDto[] }> {
