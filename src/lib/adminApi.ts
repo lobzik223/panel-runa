@@ -466,6 +466,38 @@ export async function createDataLink(body: {
   });
 }
 
+// ─── Site reviews (модерация отзывов с лендинга) ─────────────────
+
+export type SiteReviewAdminDto = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  body: string;
+  roleLabel: string | null;
+  approved: boolean;
+  isDemo: boolean;
+  sortOrder: number;
+  createdAt: string;
+};
+
+export type SiteReviewFilter = 'all' | 'demo' | 'user';
+
+export async function fetchSiteReviews(filter: SiteReviewFilter = 'all'): Promise<{ reviews: SiteReviewAdminDto[] }> {
+  const qs = new URLSearchParams({ filter });
+  return adminJson(`/admin/site-reviews?${qs.toString()}`);
+}
+
+export async function patchSiteReview(
+  id: string,
+  body: { approved: boolean }
+): Promise<{ review: SiteReviewAdminDto }> {
+  return adminJson(`/admin/site-reviews/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function deleteDataLink(id: string): Promise<void> {
   const res = await adminRequest(`/admin/data-links/${encodeURIComponent(id)}`, {
     method: 'DELETE',

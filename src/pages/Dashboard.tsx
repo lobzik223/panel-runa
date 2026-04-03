@@ -10,6 +10,7 @@ import {
   IconRules,
   IconStats,
   IconLink,
+  IconReview,
   IconLogout,
   IconSun,
   IconMoon,
@@ -22,6 +23,7 @@ import { ServerPage } from '@/sections/ServerPage';
 import { RulesPage } from '@/sections/RulesPage';
 import { ReferralStatsPage } from '@/sections/ReferralStatsPage';
 import { DataLinksPage } from '@/sections/DataLinksPage';
+import { ReviewsPage } from '@/sections/ReviewsPage';
 import {
   formatAdminRoleRu,
   getAdminDisplayName,
@@ -43,6 +45,7 @@ const NAV_ITEMS: { to: string; label: string; Icon: React.ComponentType<{ classN
   { to: '/panel/rules', label: 'Правила панели', Icon: IconRules },
   { to: '/panel/referral-stats', label: 'Статистика', Icon: IconStats },
   { to: '/panel/data-links', label: 'Графики и данные', Icon: IconLink },
+  { to: '/panel/reviews', label: 'Отзывы сайта', Icon: IconReview },
 ];
 
 function useClock() {
@@ -79,6 +82,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/panel/rules': 'Правила панели',
   '/panel/referral-stats': 'Статистика',
   '/panel/data-links': 'Графики и данные',
+  '/panel/reviews': 'Отзывы сайта',
 };
 
 const IDLE_MS = 4 * 60 * 1000;
@@ -247,6 +251,7 @@ export function Dashboard() {
             <Route path="rules" element={<RulesPage />} />
             <Route path="referral-stats" element={<ReferralStatsPage />} />
             <Route path="data-links" element={<DataLinksPage />} />
+            <Route path="reviews" element={<ReviewsPage />} />
           </Routes>
         </div>
       </main>

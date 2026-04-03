@@ -173,3 +173,11 @@ export function IconSearch({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconReview({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden fill="currentColor" stroke="none">
+      <path d="M12 2l2.4 5.26L20 8.27l-4.2 4.1.99 5.63L12 15.9l-4.79 2.1.99-5.63L4 8.27l5.6-.01L12 2z" />
+    </svg>
+  );
+}
