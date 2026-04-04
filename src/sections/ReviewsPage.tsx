@@ -3,6 +3,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import {
   fetchSiteReviews,
   patchSiteReview,
+  deleteSiteReview,
   type SiteReviewAdminDto,
   type SiteReviewFilter,
 } from '@/lib/adminApi';
@@ -24,6 +25,7 @@ export function ReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -52,6 +54,20 @@ export function ReviewsPage() {
       setError((e as Error).message);
     } finally {
       setActionId(null);
+    }
+  };
+
+  const removeReview = async (id: string) => {
+    if (!window.confirm('Удалить отзыв навсегда из базы? Это действие нельзя отменить.')) return;
+    setDeleteId(id);
+    setError(null);
+    try {
+      await deleteSiteReview(id);
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -102,15 +118,25 @@ export function ReviewsPage() {
                     <span className={pageStyles.badgeOff}>Скрыт</span>
                   )}
                 </div>
-                <label className={pageStyles.checkRow}>
-                  <input
-                    type="checkbox"
-                    checked={r.approved}
-                    disabled={actionId === r.id}
-                    onChange={(e) => void toggleApproved(r.id, e.target.checked)}
-                  />
-                  <span>Показывать на сайте</span>
-                </label>
+                <div className={pageStyles.cardActions}>
+                  <label className={pageStyles.checkRow}>
+                    <input
+                      type="checkbox"
+                      checked={r.approved}
+                      disabled={actionId === r.id}
+                      onChange={(e) => void toggleApproved(r.id, e.target.checked)}
+                    />
+                    <span>Показывать на сайте</span>
+                  </label>
+                  <button
+                    type="button"
+                    className={`${pageStyles.deleteBtn} ${isDark ? pageStyles.deleteBtnDark : ''}`}
+                    disabled={deleteId === r.id || actionId === r.id}
+                    onClick={() => void removeReview(r.id)}
+                  >
+                    {deleteId === r.id ? 'Удаление…' : 'Удалить навсегда'}
+                  </button>
+                </div>
               </div>
               <p className={pageStyles.body}>&ldquo;{r.body}&rdquo;</p>
               <div className={pageStyles.meta}>

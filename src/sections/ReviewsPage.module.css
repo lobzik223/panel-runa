@@ -69,10 +69,50 @@
 .cardTop {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  justify-content: flex-end;
+}
+
+.deleteBtn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.deleteBtnDark {
+  border-color: #7f1d1d;
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+}
+
+.deleteBtnDark:hover:not(:disabled) {
+  background: rgba(127, 29, 29, 0.55);
 }
 
 .badges {

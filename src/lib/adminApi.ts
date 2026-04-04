@@ -129,7 +129,33 @@ function getAdminAuthHeaders(): Record<string, string> {
   );
 }
 
-export async function loginPanelAdmin(email: string, password: string): Promise<{ token: string }> {
+function applyAdminSessionFromLoginPayload(data: {
+  token: string;
+  name?: string;
+  role?: string;
+  email?: string;
+}): void {
+  setAdminToken(data.token);
+  try {
+    if (typeof data.name === 'string' && data.name.trim()) {
+      sessionStorage.setItem(ADMIN_NAME_STORAGE_KEY, data.name.trim());
+    }
+    if (typeof data.role === 'string' && data.role.trim()) {
+      sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, data.role.trim());
+    }
+    if (typeof data.email === 'string' && data.email.trim()) {
+      sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, data.email.trim());
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Шаг 1: верные email+пароль → на почту уходит код (JWT ещё нет). */
+export async function requestPanelLogin(
+  email: string,
+  password: string
+): Promise<{ challengeId: string; emailMask: string; expiresInSeconds: number }> {
   const base = getApiBase();
   const path = '/admin/auth/login';
   const url = base ? `${base}${path}` : path;
@@ -139,7 +165,53 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
       'Content-Type': 'application/json',
       ...getPanelClientSecretHeaders(),
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email: email.trim(), password }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    code?: string;
+    challengeId?: string;
+    emailMask?: string;
+    expiresInSeconds?: number;
+    retryAfterSeconds?: number;
+  };
+  if (data.code === 'EMAIL_NOT_VERIFIED') {
+    throw new Error('EMAIL_NOT_VERIFIED');
+  }
+  if (data.code === 'PANEL_LOGIN_IP_LOCKED' && typeof data.retryAfterSeconds === 'number') {
+    throw new Error(`PANEL_LOGIN_IP_LOCKED:${data.retryAfterSeconds}`);
+  }
+  if (!res.ok || data.code !== 'PANEL_OTP_REQUIRED' || !data.challengeId) {
+    const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
+    throw new Error(msg);
+  }
+  return {
+    challengeId: data.challengeId,
+    emailMask: data.emailMask ?? '***',
+    expiresInSeconds: data.expiresInSeconds ?? 900,
+  };
+}
+
+/** Шаг 2: код из письма → JWT и сессия панели. */
+export async function verifyPanelLoginOtp(params: {
+  challengeId: string;
+  email: string;
+  code: string;
+}): Promise<{ token: string }> {
+  const base = getApiBase();
+  const path = '/admin/auth/verify-login-otp';
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPanelClientSecretHeaders(),
+    },
+    body: JSON.stringify({
+      challengeId: params.challengeId,
+      email: params.email.trim(),
+      code: params.code.trim(),
+    }),
   });
   const data = (await res.json().catch(() => ({}))) as {
     token?: string;
@@ -156,21 +228,63 @@ export async function loginPanelAdmin(email: string, password: string): Promise<
     const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
     throw new Error(msg);
   }
-  setAdminToken(data.token);
-  try {
-    if (typeof data.name === 'string' && data.name.trim()) {
-      sessionStorage.setItem(ADMIN_NAME_STORAGE_KEY, data.name.trim());
-    }
-    if (typeof data.role === 'string' && data.role.trim()) {
-      sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, data.role.trim());
-    }
-    if (typeof data.email === 'string' && data.email.trim()) {
-      sessionStorage.setItem(ADMIN_EMAIL_STORAGE_KEY, data.email.trim());
-    }
-  } catch {
-    /* ignore */
-  }
+  applyAdminSessionFromLoginPayload({
+    token: data.token,
+    name: data.name,
+    role: data.role,
+    email: data.email,
+  });
   return { token: data.token };
+}
+
+export async function resendPanelLoginOtp(challengeId: string, email: string): Promise<{ expiresInSeconds: number }> {
+  const base = getApiBase();
+  const path = '/admin/auth/resend-login-otp';
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPanelClientSecretHeaders(),
+    },
+    body: JSON.stringify({ challengeId, email: email.trim() }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    code?: string;
+    expiresInSeconds?: number;
+    retryAfterSeconds?: number;
+  };
+  if (data.code === 'PANEL_OTP_RESEND_COOLDOWN' && typeof data.retryAfterSeconds === 'number') {
+    throw new Error(`COOLDOWN:${data.retryAfterSeconds}`);
+  }
+  if (!res.ok) {
+    const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
+    throw new Error(msg);
+  }
+  return { expiresInSeconds: data.expiresInSeconds ?? 900 };
+}
+
+/**
+ * Удаление своего аккаунта панели (нужны email и пароль). Последнего superadmin удалить нельзя.
+ */
+export async function selfDeletePanelAdmin(email: string, password: string): Promise<void> {
+  const base = getApiBase();
+  const path = '/admin/auth/self-delete';
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPanelClientSecretHeaders(),
+    },
+    body: JSON.stringify({ email: email.trim(), password }),
+  });
+  const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+  if (!res.ok) {
+    const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
+    throw new Error(msg);
+  }
 }
 
 function networkHint(url: string): string {
@@ -496,6 +610,22 @@ export async function patchSiteReview(
     method: 'PATCH',
     body: JSON.stringify(body),
   });
+}
+
+export async function deleteSiteReview(id: string): Promise<void> {
+  const res = await adminRequest(`/admin/site-reviews/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (res.ok) return;
+  const text = await res.text();
+  let errMsg = `Ошибка ${res.status}`;
+  try {
+    const j = JSON.parse(text) as { error?: string };
+    if (j.error) errMsg = j.error;
+  } catch {
+    if (text) errMsg = text.slice(0, 200);
+  }
+  throw new Error(errMsg);
 }
 
 export async function deleteDataLink(id: string): Promise<void> {

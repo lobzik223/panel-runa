@@ -1,4 +1,5 @@
 .wrap {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -173,6 +174,127 @@
 
 .enterBtn:hover {
   background: #374151;
+}
+
+.pageTitle {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.pageTitleDark {
+  color: #f9fafb;
+}
+
+.pageSubtitle {
+  margin: -12px 0 0;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.pageSubtitleDark {
+  color: #9ca3af;
+}
+
+.otpInput {
+  font-size: 22px;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.otpActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.secondaryBtn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wrapDark .secondaryBtn {
+  border-color: #374151;
+  background: #252528;
+  color: #e5e7eb;
+}
+
+.wrapDark .secondaryBtn:hover:not(:disabled) {
+  background: #2c2c2e;
+}
+
+.dangerHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #6b7280;
+  text-align: center;
+}
+
+.dangerHintDark {
+  color: #9ca3af;
+}
+
+.dangerLink {
+  margin: 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.dangerLink:hover:not(:disabled) {
+  color: #991b1b;
+}
+
+.wrapDark .dangerLink {
+  color: #f87171;
+}
+
+.dangerLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.infoHint {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #15803d;
+}
+
+.wrapDark .infoHint {
+  color: #86efac;
 }
 
 .errorHint {

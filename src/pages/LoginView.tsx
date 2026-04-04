@@ -1,34 +1,160 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
-import { loginPanelAdmin } from '@/lib/adminApi';
+import {
+  requestPanelLogin,
+  verifyPanelLoginOtp,
+  resendPanelLoginOtp,
+  selfDeletePanelAdmin,
+} from '@/lib/adminApi';
 import styles from './LoginView.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
+
+/** Должен совпадать с RESEND_COOLDOWN_MS в Backend-Seepromnt (panel-admin-login). */
+const PANEL_OTP_RESEND_SEC = 300;
+
+function formatResendCooldown(totalSec: number): string {
+  if (totalSec <= 0) return '';
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+type Step = 'credentials' | 'otp';
 
 export function LoginView() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
+  const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [emailMask, setEmailMask] = useState('');
   const [errorText, setErrorText] = useState('');
+  const [infoText, setInfoText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendSec, setResendSec] = useState(0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (resendSec <= 0) return;
+    const t = setInterval(() => setResendSec((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendSec]);
+
+  const goOtpStep = useCallback((cid: string, mask: string) => {
+    setChallengeId(cid);
+    setEmailMask(mask);
+    setStep('otp');
+    setOtp('');
+    setErrorText('');
+    setInfoText('');
+    setResendSec(PANEL_OTP_RESEND_SEC);
+  }, []);
+
+  const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorText('');
+    setInfoText('');
     setLoading(true);
     try {
-      await loginPanelAdmin(email.trim(), password);
-      navigate('/panel');
+      const r = await requestPanelLogin(email.trim(), password);
+      goOtpStep(r.challengeId, r.emailMask);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('EMAIL_NOT_VERIFIED')) {
-        setErrorText('Аккаунт не активирован. Создайте пользователя на сервере: npm run create-panel-admin (см. документацию бэкенда).');
+        setErrorText(
+          'Аккаунт не активирован. Подтвердите почту на сервере или создайте пользователя через CLI (create-panel-admin).',
+        );
+      } else if (msg.startsWith('PANEL_LOGIN_IP_LOCKED:')) {
+        const sec = msg.split(':')[1] ?? '900';
+        setErrorText(`Слишком много неверных попыток пароля. Повторите через ${sec} с.`);
+      } else if (msg.includes('SMTP') || msg.includes('почт')) {
+        setErrorText(msg);
       } else {
         setErrorText(msg);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!challengeId || otp.trim().length !== 6) {
+      setErrorText('Введите 6-значный код из письма.');
+      return;
+    }
+    setErrorText('');
+    setInfoText('');
+    setLoading(true);
+    try {
+      await verifyPanelLoginOtp({ challengeId, email: email.trim(), code: otp.trim() });
+      navigate('/panel');
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : 'Неверный код или сессия устарела.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!challengeId || resendSec > 0) return;
+    setErrorText('');
+    setInfoText('');
+    setLoading(true);
+    try {
+      const r = await resendPanelLoginOtp(challengeId, email.trim());
+      setResendSec(PANEL_OTP_RESEND_SEC);
+      setInfoText(`Код отправлен повторно. Действует ${Math.floor(r.expiresInSeconds / 60)} мин.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.startsWith('COOLDOWN:')) {
+        const sec = Number(msg.split(':')[1]) || PANEL_OTP_RESEND_SEC;
+        setResendSec(sec);
+        setErrorText(`Повторная отправка возможна через ${formatResendCooldown(sec)}.`);
+      } else {
+        setErrorText(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setStep('credentials');
+    setChallengeId(null);
+    setOtp('');
+    setErrorText('');
+    setInfoText('');
+    setResendSec(0);
+  };
+
+  const handleSelfDelete = async () => {
+    if (!email.trim() || !password) {
+      setErrorText('Укажите email и пароль, затем снова нажмите удаление.');
+      return;
+    }
+    if (
+      !window.confirm(
+        'Удалить этот аккаунт администратора панели безвозвратно? Войти под ним больше не получится.',
+      )
+    ) {
+      return;
+    }
+    setErrorText('');
+    setInfoText('');
+    setLoading(true);
+    try {
+      await selfDeletePanelAdmin(email.trim(), password);
+      setInfoText('Аккаунт удалён. Окно можно закрыть.');
+      setPassword('');
+      setChallengeId(null);
+      setStep('credentials');
+    } catch (err) {
+      setErrorText(err instanceof Error ? err.message : 'Не удалось удалить');
     } finally {
       setLoading(false);
     }
@@ -60,45 +186,119 @@ export function LoginView() {
           <img src={LOGO_SRC} alt="Seepromnt" className={styles.logo} />
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.field}>
-            <label htmlFor="login-email" className={`${styles.label} ${isDark ? styles.labelDark : ''}`}>
-              Email
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`${styles.input} ${isDark ? styles.inputDark : ''}`}
-              required
-            />
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="login-password" className={`${styles.label} ${isDark ? styles.labelDark : ''}`}>
-              Пароль
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`${styles.input} ${isDark ? styles.inputDark : ''}`}
-              required
-              minLength={1}
-            />
-          </div>
-          {errorText ? (
-            <p className={styles.errorHint} role="alert">
-              {errorText}
+        <h1 className={`${styles.pageTitle} ${isDark ? styles.pageTitleDark : ''}`}>Авторизация администратора</h1>
+        <p className={`${styles.pageSubtitle} ${isDark ? styles.pageSubtitleDark : ''}`}>
+          {step === 'credentials'
+            ? 'Вход только для учётных записей панели. После пароля на почту придёт отдельный код входа (не связан с регистрацией в приложении).'
+            : `Код отправлен на ${emailMask}. Повторная отправка — не чаще одного раза в 5 минут.`}
+        </p>
+
+        {step === 'credentials' ? (
+          <form onSubmit={handleCredentials} className={styles.form}>
+            <div className={styles.field}>
+              <label htmlFor="login-email" className={`${styles.label} ${isDark ? styles.labelDark : ''}`}>
+                Email
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`${styles.input} ${isDark ? styles.inputDark : ''}`}
+                required
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="login-password" className={`${styles.label} ${isDark ? styles.labelDark : ''}`}>
+                Пароль
+              </label>
+              <input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${styles.input} ${isDark ? styles.inputDark : ''}`}
+                required
+                minLength={1}
+              />
+            </div>
+            {errorText ? (
+              <p className={styles.errorHint} role="alert">
+                {errorText}
+              </p>
+            ) : null}
+            {infoText ? (
+              <p className={styles.infoHint} role="status">
+                {infoText}
+              </p>
+            ) : null}
+            <button type="submit" className={styles.enterBtn} disabled={loading}>
+              {loading ? 'Проверка…' : 'Далее — код на почту'}
+            </button>
+            <p className={`${styles.dangerHint} ${isDark ? styles.dangerHintDark : ''}`}>
+              Не вы инициировали вход? При утечке доступа можно удалить этот аккаунт панели (нужны email и пароль).
             </p>
-          ) : null}
-          <button type="submit" className={styles.enterBtn} disabled={loading}>
-            {loading ? 'Вход…' : 'Войти'}
-          </button>
-        </form>
+            <button
+              type="button"
+              className={styles.dangerLink}
+              disabled={loading}
+              onClick={() => void handleSelfDelete()}
+            >
+              Удалить аккаунт администратора навсегда
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleOtp} className={styles.form}>
+            <div className={styles.field}>
+              <label htmlFor="login-otp" className={`${styles.label} ${isDark ? styles.labelDark : ''}`}>
+                Код из письма
+              </label>
+              <input
+                id="login-otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d{6}"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className={`${styles.input} ${styles.otpInput} ${isDark ? styles.inputDark : ''}`}
+                placeholder="000000"
+                required
+              />
+            </div>
+            {errorText ? (
+              <p className={styles.errorHint} role="alert">
+                {errorText}
+              </p>
+            ) : null}
+            {infoText ? (
+              <p className={styles.infoHint} role="status">
+                {infoText}
+              </p>
+            ) : null}
+            <button type="submit" className={styles.enterBtn} disabled={loading}>
+              {loading ? 'Вход…' : 'Войти в панель'}
+            </button>
+            <div className={styles.otpActions}>
+              <button type="button" className={styles.secondaryBtn} disabled={loading} onClick={() => handleBackToLogin()}>
+                Назад
+              </button>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                disabled={loading || resendSec > 0}
+                onClick={() => void handleResend()}
+              >
+                {resendSec > 0
+                  ? `Отправить снова через ${formatResendCooldown(resendSec)}`
+                  : 'Отправить код ещё раз'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

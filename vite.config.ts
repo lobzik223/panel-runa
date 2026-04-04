@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  /** Абсолютный base — иначе при F5 на /panel браузер грузит чанки с неверного пути (белый экран). */
+  base: '/',
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
