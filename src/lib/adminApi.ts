@@ -151,11 +151,12 @@ function applyAdminSessionFromLoginPayload(data: {
   }
 }
 
-/** Шаг 1: верные email+пароль → на почту уходит код (JWT ещё нет). */
-export async function requestPanelLogin(
-  email: string,
-  password: string
-): Promise<{ challengeId: string; emailMask: string; expiresInSeconds: number }> {
+export type RequestPanelLoginResult =
+  | { requiresOtp: true; challengeId: string; emailMask: string; expiresInSeconds: number }
+  | { requiresOtp: false };
+
+/** Шаг 1: верные email+пароль → либо доверенная сессия 24ч (без кода), либо код на почту. */
+export async function requestPanelLogin(email: string, password: string): Promise<RequestPanelLoginResult> {
   const base = getApiBase();
   const path = '/admin/auth/login';
   const url = base ? `${base}${path}` : path;
@@ -174,6 +175,10 @@ export async function requestPanelLogin(
     emailMask?: string;
     expiresInSeconds?: number;
     retryAfterSeconds?: number;
+    token?: string;
+    name?: string;
+    role?: string;
+    email?: string;
   };
   if (data.code === 'EMAIL_NOT_VERIFIED') {
     throw new Error('EMAIL_NOT_VERIFIED');
@@ -181,11 +186,26 @@ export async function requestPanelLogin(
   if (data.code === 'PANEL_LOGIN_IP_LOCKED' && typeof data.retryAfterSeconds === 'number') {
     throw new Error(`PANEL_LOGIN_IP_LOCKED:${data.retryAfterSeconds}`);
   }
+  if (data.code === 'PANEL_SESSION_TRUSTED' && data.token) {
+    applyAdminSessionFromLoginPayload({
+      token: data.token,
+      name: data.name,
+      role: data.role,
+      email: data.email,
+    });
+    return { requiresOtp: false };
+  }
+  if (data.code === 'ADMIN_PANEL_PUBLIC_URL_MISSING') {
+    throw new Error(
+      'На сервере не задан ADMIN_PANEL_PUBLIC_URL (URL панели для ссылок в письмах).',
+    );
+  }
   if (!res.ok || data.code !== 'PANEL_OTP_REQUIRED' || !data.challengeId) {
     const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
     throw new Error(msg);
   }
   return {
+    requiresOtp: true,
     challengeId: data.challengeId,
     emailMask: data.emailMask ?? '***',
     expiresInSeconds: data.expiresInSeconds ?? 900,
@@ -265,12 +285,10 @@ export async function resendPanelLoginOtp(challengeId: string, email: string): P
   return { expiresInSeconds: data.expiresInSeconds ?? 900 };
 }
 
-/**
- * Удаление своего аккаунта панели (нужны email и пароль). Последнего superadmin удалить нельзя.
- */
-export async function selfDeletePanelAdmin(email: string, password: string): Promise<void> {
+/** Удаление админа по ссылке из письма (токен + пароль). */
+export async function deleteAdminWithToken(token: string, password: string): Promise<void> {
   const base = getApiBase();
-  const path = '/admin/auth/self-delete';
+  const path = '/admin/auth/delete-with-token';
   const url = base ? `${base}${path}` : path;
   const res = await fetch(url, {
     method: 'POST',
@@ -278,7 +296,7 @@ export async function selfDeletePanelAdmin(email: string, password: string): Pro
       'Content-Type': 'application/json',
       ...getPanelClientSecretHeaders(),
     },
-    body: JSON.stringify({ email: email.trim(), password }),
+    body: JSON.stringify({ token: token.trim(), password }),
   });
   const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
   if (!res.ok) {
@@ -355,6 +373,8 @@ export type AdminUserDto = {
   createdAt: string;
   updatedAt: string;
   devicePlatform: string | null;
+  /** Записей привязки устройства (хэш HMAC в БД, не сырой ID). */
+  deviceBindingCount: number;
   /** Причина блокировки квот (из панели) */
   adminBlockReason: string | null;
 };
@@ -542,6 +562,18 @@ export async function patchAdminUser(
   return adminJson(`/admin/users/${encodeURIComponent(userId)}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
+  });
+}
+
+/** Сброс привязки устройства к регистрации (хэши в БД). Вход Google/Apple не отключается. */
+export async function postClearUserDeviceBindings(userId: string): Promise<{
+  ok: boolean;
+  bindingsRemoved: number;
+  user: AdminUserDto;
+}> {
+  return adminJson(`/admin/users/${encodeURIComponent(userId)}/clear-device-bindings`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 

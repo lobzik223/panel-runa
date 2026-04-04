@@ -1,12 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
-import {
-  requestPanelLogin,
-  verifyPanelLoginOtp,
-  resendPanelLoginOtp,
-  selfDeletePanelAdmin,
-} from '@/lib/adminApi';
+import { requestPanelLogin, verifyPanelLoginOtp, resendPanelLoginOtp } from '@/lib/adminApi';
 import styles from './LoginView.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
@@ -61,6 +56,10 @@ export function LoginView() {
     setLoading(true);
     try {
       const r = await requestPanelLogin(email.trim(), password);
+      if (!r.requiresOtp) {
+        navigate('/panel');
+        return;
+      }
       goOtpStep(r.challengeId, r.emailMask);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -132,34 +131,6 @@ export function LoginView() {
     setResendSec(0);
   };
 
-  const handleSelfDelete = async () => {
-    if (!email.trim() || !password) {
-      setErrorText('Укажите email и пароль, затем снова нажмите удаление.');
-      return;
-    }
-    if (
-      !window.confirm(
-        'Удалить этот аккаунт администратора панели безвозвратно? Войти под ним больше не получится.',
-      )
-    ) {
-      return;
-    }
-    setErrorText('');
-    setInfoText('');
-    setLoading(true);
-    try {
-      await selfDeletePanelAdmin(email.trim(), password);
-      setInfoText('Аккаунт удалён. Окно можно закрыть.');
-      setPassword('');
-      setChallengeId(null);
-      setStep('credentials');
-    } catch (err) {
-      setErrorText(err instanceof Error ? err.message : 'Не удалось удалить');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className={`${styles.wrap} ${isDark ? styles.wrapDark : ''}`}>
       <div className={styles.themeSwitchWrap}>
@@ -183,13 +154,13 @@ export function LoginView() {
 
       <div className={styles.card}>
         <div className={styles.logoWrap}>
-          <img src={LOGO_SRC} alt="Seepromnt" className={styles.logo} />
+          <img src={LOGO_SRC} alt="Seepromnt" className={styles.logo} width={160} height={160} />
         </div>
 
         <h1 className={`${styles.pageTitle} ${isDark ? styles.pageTitleDark : ''}`}>Авторизация администратора</h1>
         <p className={`${styles.pageSubtitle} ${isDark ? styles.pageSubtitleDark : ''}`}>
           {step === 'credentials'
-            ? 'Вход только для учётных записей панели. После пароля на почту придёт отдельный код входа (не связан с регистрацией в приложении).'
+            ? 'Вход только для учётных записей панели. Если вы уже подтверждали код с этого же устройства и сети в течение 24 часов — код может не потребоваться. Иначе на почту придёт отдельный код (не связан с регистрацией в приложении). Удаление аккаунта — только по ссылке в письме.'
             : `Код отправлен на ${emailMask}. Повторная отправка — не чаще одного раза в 5 минут.`}
         </p>
 
@@ -236,17 +207,6 @@ export function LoginView() {
             ) : null}
             <button type="submit" className={styles.enterBtn} disabled={loading}>
               {loading ? 'Проверка…' : 'Далее — код на почту'}
-            </button>
-            <p className={`${styles.dangerHint} ${isDark ? styles.dangerHintDark : ''}`}>
-              Не вы инициировали вход? При утечке доступа можно удалить этот аккаунт панели (нужны email и пароль).
-            </p>
-            <button
-              type="button"
-              className={styles.dangerLink}
-              disabled={loading}
-              onClick={() => void handleSelfDelete()}
-            >
-              Удалить аккаунт администратора навсегда
             </button>
           </form>
         ) : (

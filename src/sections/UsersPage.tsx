@@ -9,6 +9,7 @@ import {
   fetchAdminUsers,
   fetchAdminUserDetail,
   patchAdminUser,
+  postClearUserDeviceBindings,
 } from '@/lib/adminApi';
 
 const PLAN_OPTIONS: { value: 'free' | 'lite' | 'pro' | 'business'; label: string }[] = [
@@ -399,6 +400,11 @@ export function UsersPage() {
                   <InfoField label="Email" value={selectedUser.email} dk={dk} />
                   <InfoField label="Роль" value={roleFromUser(selectedUser)} dk={dk} />
                   <InfoField label="Платформа устройства" value={deviceLabel(selectedUser.devicePlatform)} dk={dk} />
+                  <InfoField
+                    label="Привязка к регистрации (хэш в БД)"
+                    value={String(selectedUser.deviceBindingCount ?? 0)}
+                    dk={dk}
+                  />
                   <InfoField label="Текущий тариф" value={tierLabel(selectedUser.subscriptionTier)} dk={dk} accent />
                   <InfoField label="Оплаченная подписка до" value={formatDateRu(selectedUser.paidSubscriptionExpiresAt)} dk={dk} />
                   <InfoField label="Триал" value={formatDateTimeRu(selectedUser.freeTrialExpiresAt)} dk={dk} />
@@ -413,6 +419,43 @@ export function UsersPage() {
                       warn
                     />
                   ) : null}
+                </div>
+                <div className={`${s.deviceResetBlock}${dk}`}>
+                  <p className={`${s.deviceResetText}${dk}`}>
+                    Если приложение не даёт зарегистрировать новый аккаунт с этого устройства («уже зарегистрирован»), можно
+                    сбросить привязку: в БД удаляются только HMAC-хэши устройства и таймер повторной отправки кода. Вход по
+                    Google и Apple не сбрасывается (идентификаторы в аккаунте не трогаем).
+                  </p>
+                  <button
+                    type="button"
+                    className={`${s.actionBtn} ${s.actionBtnOrange}`}
+                    disabled={actionBusy || (selectedUser.deviceBindingCount ?? 0) === 0}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          'Сбросить привязку устройства к этому аккаунту? С устройства снова можно будет создать другой аккаунт. Вход через Google/Apple для этого пользователя сохранится.',
+                        )
+                      ) {
+                        return;
+                      }
+                      void (async () => {
+                        if (!selectedId) return;
+                        setActionBusy(true);
+                        setActionError(null);
+                        try {
+                          const r = await postClearUserDeviceBindings(selectedId);
+                          setDetailUser(r.user);
+                          await loadList();
+                        } catch (e) {
+                          setActionError((e as Error).message);
+                        } finally {
+                          setActionBusy(false);
+                        }
+                      })();
+                    }}
+                  >
+                    Сбросить привязку устройства
+                  </button>
                 </div>
               </div>
             )}
