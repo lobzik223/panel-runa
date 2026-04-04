@@ -190,7 +190,9 @@
   margin-top: 24px;
   border-radius: var(--radius-lg);
   border: 1px solid #e8eaed;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   background: #fff;
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s, border-color 0.2s;
@@ -386,4 +388,16 @@
 
 .chartLegendDotSecondary {
   background: #94a3b8;
+}
+
+@media (max-width: 767px) {
+  .table th,
+  .table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .table th {
+    font-size: 11px;
+  }
 }

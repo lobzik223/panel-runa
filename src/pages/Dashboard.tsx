@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -14,6 +14,8 @@ import {
   IconLogout,
   IconSun,
   IconMoon,
+  IconMenu,
+  IconClose,
 } from '@/components/Icons';
 import { MainPage } from '@/sections/MainPage';
 import { UsersPage } from '@/sections/UsersPage';
@@ -155,12 +157,57 @@ export function Dashboard() {
   };
   const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
   const adminRoleLabel = formatAdminRoleRu(getAdminRole());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+
+  useEffect(() => {
+    closeMobileNav();
+  }, [location.pathname, closeMobileNav]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileNavOpen]);
 
   return (
     <div className={`${s.layout} ${isDark ? s.dark : ''}`}>
+      {mobileNavOpen ? (
+        <div
+          className={s.navBackdrop}
+          role="presentation"
+          aria-hidden
+          onClick={closeMobileNav}
+        />
+      ) : null}
+
       {/* ───── SIDEBAR ───── */}
-      <aside className={s.sidebar}>
+      <aside className={`${s.sidebar} ${mobileNavOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarInner}>
+          <div className={s.sidebarMobileHeader}>
+            <span className={s.sidebarMobileTitle}>Меню</span>
+            <button
+              type="button"
+              className={s.sidebarCloseBtn}
+              onClick={closeMobileNav}
+              aria-label="Закрыть меню"
+            >
+              <IconClose className={s.sidebarCloseSvg} />
+            </button>
+          </div>
+
           {/* Logo */}
           <div className={s.logoBlock}>
             <div className={s.logoGlow} />
@@ -177,6 +224,7 @@ export function Dashboard() {
                 className={({ isActive }: { isActive: boolean }) =>
                   `${s.navItem} ${isActive ? s.navActive : ''}`
                 }
+                onClick={closeMobileNav}
               >
                 <span className={s.navDot} />
                 <span className={s.navIcon}>
@@ -227,6 +275,15 @@ export function Dashboard() {
       {/* ───── MAIN ───── */}
       <main className={s.main}>
         <header className={s.topBar}>
+          <button
+            type="button"
+            className={s.menuBtn}
+            aria-label="Открыть меню"
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <IconMenu className={s.menuIcon} />
+          </button>
           <div className={s.topLeft}>
             <h1 className={s.pageTitle}>{pageTitle}</h1>
             <p className={s.pageGreeting}>

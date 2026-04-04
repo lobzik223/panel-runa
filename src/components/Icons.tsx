@@ -181,3 +181,20 @@ export function IconReview({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/** Гамбургер — мобильное меню панели */
+export function IconMenu({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+export function IconClose({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
