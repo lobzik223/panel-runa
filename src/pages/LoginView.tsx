@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
-import { requestPanelLogin, verifyPanelLoginOtp, resendPanelLoginOtp } from '@/lib/adminApi';
+import {
+  requestPanelLogin,
+  verifyPanelLoginOtp,
+  resendPanelLoginOtp,
+  abandonPanelLoginChallenge,
+} from '@/lib/adminApi';
 import styles from './LoginView.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
 
-/** Должен совпадать с RESEND_COOLDOWN_MS в Backend-Seepromnt (panel-admin-login). */
-const PANEL_OTP_RESEND_SEC = 300;
+/** Fallback, если сервер не прислал resendCooldownSeconds (5 мин в panel-admin-login). */
+const PANEL_OTP_RESEND_SEC_FALLBACK = 300;
 
 function formatResendCooldown(totalSec: number): string {
   if (totalSec <= 0) return '';
@@ -32,6 +37,7 @@ export function LoginView() {
   const [infoText, setInfoText] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendSec, setResendSec] = useState(0);
+  const [emailVerificationPending, setEmailVerificationPending] = useState(false);
 
   useEffect(() => {
     if (resendSec <= 0) return;
@@ -39,15 +45,24 @@ export function LoginView() {
     return () => clearInterval(t);
   }, [resendSec]);
 
-  const goOtpStep = useCallback((cid: string, mask: string) => {
-    setChallengeId(cid);
-    setEmailMask(mask);
-    setStep('otp');
-    setOtp('');
-    setErrorText('');
-    setInfoText('');
-    setResendSec(PANEL_OTP_RESEND_SEC);
-  }, []);
+  const goOtpStep = useCallback(
+    (opts: {
+      challengeId: string;
+      emailMask: string;
+      resendCooldownSeconds: number;
+      emailVerificationPending: boolean;
+    }) => {
+      setChallengeId(opts.challengeId);
+      setEmailMask(opts.emailMask);
+      setStep('otp');
+      setOtp('');
+      setErrorText('');
+      setInfoText('');
+      setResendSec(opts.resendCooldownSeconds);
+      setEmailVerificationPending(opts.emailVerificationPending);
+    },
+    [],
+  );
 
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,14 +75,15 @@ export function LoginView() {
         navigate('/panel');
         return;
       }
-      goOtpStep(r.challengeId, r.emailMask);
+      goOtpStep({
+        challengeId: r.challengeId,
+        emailMask: r.emailMask,
+        resendCooldownSeconds: r.resendCooldownSeconds,
+        emailVerificationPending: r.emailVerificationPending,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('EMAIL_NOT_VERIFIED')) {
-        setErrorText(
-          'Аккаунт не активирован. Подтвердите почту на сервере или создайте пользователя через CLI (create-panel-admin).',
-        );
-      } else if (msg.startsWith('PANEL_LOGIN_IP_LOCKED:')) {
+      if (msg.startsWith('PANEL_LOGIN_IP_LOCKED:')) {
         const sec = msg.split(':')[1] ?? '900';
         setErrorText(`Слишком много неверных попыток пароля. Повторите через ${sec} с.`);
       } else if (msg.includes('SMTP') || msg.includes('почт')) {
@@ -106,12 +122,12 @@ export function LoginView() {
     setLoading(true);
     try {
       const r = await resendPanelLoginOtp(challengeId, email.trim());
-      setResendSec(PANEL_OTP_RESEND_SEC);
+      setResendSec(r.resendCooldownSeconds);
       setInfoText(`Код отправлен повторно. Действует ${Math.floor(r.expiresInSeconds / 60)} мин.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.startsWith('COOLDOWN:')) {
-        const sec = Number(msg.split(':')[1]) || PANEL_OTP_RESEND_SEC;
+        const sec = Number(msg.split(':')[1]) || PANEL_OTP_RESEND_SEC_FALLBACK;
         setResendSec(sec);
         setErrorText(`Повторная отправка возможна через ${formatResendCooldown(sec)}.`);
       } else {
@@ -122,13 +138,23 @@ export function LoginView() {
     }
   };
 
-  const handleBackToLogin = () => {
+  const handleBackToLogin = async () => {
+    const cid = challengeId;
+    const em = email.trim();
+    if (cid && em) {
+      try {
+        await abandonPanelLoginChallenge(cid, em);
+      } catch {
+        /* сеть — всё равно сбрасываем UI */
+      }
+    }
     setStep('credentials');
     setChallengeId(null);
     setOtp('');
     setErrorText('');
     setInfoText('');
     setResendSec(0);
+    setEmailVerificationPending(false);
   };
 
   return (
@@ -161,7 +187,9 @@ export function LoginView() {
         <p className={`${styles.pageSubtitle} ${isDark ? styles.pageSubtitleDark : ''}`}>
           {step === 'credentials'
             ? 'Вход только для учётных записей панели. Если вы уже подтверждали код с этого же устройства и сети в течение 24 часов — код может не потребоваться. Иначе на почту придёт отдельный код (не связан с регистрацией в приложении). Удаление аккаунта — только по ссылке в письме.'
-            : `Код отправлен на ${emailMask}. Повторная отправка — не чаще одного раза в 5 минут.`}
+            : emailVerificationPending
+              ? `Код отправлен на ${emailMask}. Введите его, чтобы подтвердить владение почтой и войти. Если вернётесь назад без ввода кода, вход не считается подтверждённым — нужно запросить новый код. Повторная отправка — не чаще одного раза в 5 минут (таймер на кнопке).`
+              : `Код отправлен на ${emailMask}. Повторная отправка — не чаще одного раза в 5 минут (таймер на кнопке).`}
         </p>
 
         {step === 'credentials' ? (
@@ -243,7 +271,12 @@ export function LoginView() {
               {loading ? 'Вход…' : 'Войти в панель'}
             </button>
             <div className={styles.otpActions}>
-              <button type="button" className={styles.secondaryBtn} disabled={loading} onClick={() => handleBackToLogin()}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                disabled={loading}
+                onClick={() => void handleBackToLogin()}
+              >
                 Назад
               </button>
               <button

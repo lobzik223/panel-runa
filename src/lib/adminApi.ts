@@ -152,7 +152,16 @@ function applyAdminSessionFromLoginPayload(data: {
 }
 
 export type RequestPanelLoginResult =
-  | { requiresOtp: true; challengeId: string; emailMask: string; expiresInSeconds: number }
+  | {
+      requiresOtp: true;
+      challengeId: string;
+      emailMask: string;
+      expiresInSeconds: number;
+      /** Сервер: panel-admin-login RESEND_COOLDOWN_MS (секунды до повторной отправки). */
+      resendCooldownSeconds: number;
+      /** Почта ещё не подтверждена — код подтверждает владение адресом. */
+      emailVerificationPending: boolean;
+    }
   | { requiresOtp: false };
 
 /** Шаг 1: верные email+пароль → либо доверенная сессия 24ч (без кода), либо код на почту. */
@@ -179,10 +188,9 @@ export async function requestPanelLogin(email: string, password: string): Promis
     name?: string;
     role?: string;
     email?: string;
+    resendCooldownSeconds?: number;
+    emailVerificationPending?: boolean;
   };
-  if (data.code === 'EMAIL_NOT_VERIFIED') {
-    throw new Error('EMAIL_NOT_VERIFIED');
-  }
   if (data.code === 'PANEL_LOGIN_IP_LOCKED' && typeof data.retryAfterSeconds === 'number') {
     throw new Error(`PANEL_LOGIN_IP_LOCKED:${data.retryAfterSeconds}`);
   }
@@ -204,11 +212,15 @@ export async function requestPanelLogin(email: string, password: string): Promis
     const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
     throw new Error(msg);
   }
+  const resendCooldownSeconds =
+    typeof data.resendCooldownSeconds === 'number' && data.resendCooldownSeconds > 0 ? data.resendCooldownSeconds : 300;
   return {
     requiresOtp: true,
     challengeId: data.challengeId,
     emailMask: data.emailMask ?? '***',
     expiresInSeconds: data.expiresInSeconds ?? 900,
+    resendCooldownSeconds,
+    emailVerificationPending: Boolean(data.emailVerificationPending),
   };
 }
 
@@ -241,9 +253,6 @@ export async function verifyPanelLoginOtp(params: {
     role?: string;
     email?: string;
   };
-  if (data.code === 'EMAIL_NOT_VERIFIED') {
-    throw new Error('EMAIL_NOT_VERIFIED');
-  }
   if (!res.ok || !data.token) {
     const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
     throw new Error(msg);
@@ -257,7 +266,10 @@ export async function verifyPanelLoginOtp(params: {
   return { token: data.token };
 }
 
-export async function resendPanelLoginOtp(challengeId: string, email: string): Promise<{ expiresInSeconds: number }> {
+export async function resendPanelLoginOtp(
+  challengeId: string,
+  email: string
+): Promise<{ expiresInSeconds: number; resendCooldownSeconds: number }> {
   const base = getApiBase();
   const path = '/admin/auth/resend-login-otp';
   const url = base ? `${base}${path}` : path;
@@ -274,6 +286,7 @@ export async function resendPanelLoginOtp(challengeId: string, email: string): P
     code?: string;
     expiresInSeconds?: number;
     retryAfterSeconds?: number;
+    resendCooldownSeconds?: number;
   };
   if (data.code === 'PANEL_OTP_RESEND_COOLDOWN' && typeof data.retryAfterSeconds === 'number') {
     throw new Error(`COOLDOWN:${data.retryAfterSeconds}`);
@@ -282,7 +295,26 @@ export async function resendPanelLoginOtp(challengeId: string, email: string): P
     const msg = typeof data.error === 'string' ? data.error : `Ошибка ${res.status}`;
     throw new Error(msg);
   }
-  return { expiresInSeconds: data.expiresInSeconds ?? 900 };
+  const resendCooldownSeconds =
+    typeof data.resendCooldownSeconds === 'number' && data.resendCooldownSeconds > 0 ? data.resendCooldownSeconds : 300;
+  return { expiresInSeconds: data.expiresInSeconds ?? 900, resendCooldownSeconds };
+}
+
+/** Отмена сессии ввода кода (кнопка «Назад») — challenge удаляется на сервере. */
+export async function abandonPanelLoginChallenge(challengeId: string, email: string): Promise<void> {
+  const base = getApiBase();
+  const path = '/admin/auth/abandon-login-challenge';
+  const url = base ? `${base}${path}` : path;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPanelClientSecretHeaders(),
+    },
+    body: JSON.stringify({ challengeId, email: email.trim() }),
+  });
+  if (res.status === 401) return;
+  await res.json().catch(() => ({}));
 }
 
 /** Удаление админа по ссылке из письма (токен + пароль). */
