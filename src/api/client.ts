@@ -47,6 +47,8 @@ export interface DashboardStats {
   newRegistrations: number;
   chartData: { date: string; count: number }[];
   deletedAccounts: number;
+  /** Всего пользователей в БД (таблица users). */
+  totalUsers: number;
   serverStatus: { database: 'ok' | 'error'; server: string };
 }
 

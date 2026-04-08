@@ -47,6 +47,7 @@ export default function Dashboard() {
     newRegistrations: number;
     chartData: { date: string; count: number }[];
     deletedAccounts: number;
+    totalUsers: number;
     serverStatus: { database: 'ok' | 'error'; server: string };
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -301,8 +302,12 @@ export default function Dashboard() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <p className="text-center text-sm font-semibold text-gray-700 mt-2">
-                Всего: {totalDonut}
+              <p className="text-center text-xs text-gray-500 mt-2 max-w-xs mx-auto">
+                Сумма сегментов круга (разные метрики, не число пользователей):{' '}
+                <span className="font-semibold text-gray-700">{totalDonut}</span>
+              </p>
+              <p className="text-center text-sm font-semibold text-gray-800 mt-1">
+                Всего пользователей в БД: {s.totalUsers ?? '—'}
               </p>
             </div>
           ) : (

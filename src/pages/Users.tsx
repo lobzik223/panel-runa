@@ -17,6 +17,8 @@ export default function Users() {
   const [searchByEmail, setSearchByEmail] = useState('');
   const [debouncedEmail, setDebouncedEmail] = useState('');
   const [page, setPage] = useState(1);
+  /** Сколько строк запрашивать с API (все зарегистрированные помещаются на одну страницу при достаточном значении). */
+  const [pageSize, setPageSize] = useState(500);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
@@ -41,7 +43,7 @@ export default function Users() {
     error: null,
   });
 
-  const limit = 20;
+  const PAGE_SIZE_OPTIONS = [20, 50, 100, 250, 500, 1000, 2000] as const;
   const SUBSCRIPTION_PRESETS = [
     { days: 30, label: '1 мес.' },
     { days: 90, label: '3 мес.' },
@@ -67,6 +69,10 @@ export default function Users() {
   }, [searchByEmail]);
 
   useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -76,7 +82,7 @@ export default function Users() {
         search: debouncedEmail.trim() || undefined,
         userId: validUserId,
         page,
-        limit,
+        limit: pageSize,
       })
       .then((res) => {
         if (!cancelled) setData(res);
@@ -94,7 +100,7 @@ export default function Users() {
     return () => {
       cancelled = true;
     };
-  }, [searchById, debouncedEmail, page, refreshKey]);
+  }, [searchById, debouncedEmail, page, pageSize, refreshKey]);
 
   const openUser = useCallback((id: number) => {
     setLoadingDetail(true);
@@ -209,12 +215,26 @@ export default function Users() {
     }
   };
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 0;
+  const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
   const isBlocked = selectedUser?.blockedUntil && new Date(selectedUser.blockedUntil) > new Date();
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Пользователи</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-1">Пользователи</h1>
+      <p className="text-sm text-gray-500 mb-4">
+        Все аккаунты, зарегистрированные в приложении (одна таблица в БД). Поиск ниже сужает список.
+      </p>
+      {data && !loading && (
+        <p className="text-sm font-medium text-gray-700 mb-4">
+          Зарегистрировано в приложении: <span className="text-runa-orange">{data.total}</span>
+          {data.items.length < data.total ? (
+            <span className="text-gray-500 font-normal">
+              {' '}
+              (на экране {data.items.length} из {data.total} — листайте страницы или увеличьте «На странице»)
+            </span>
+          ) : null}
+        </p>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           type="text"
@@ -233,6 +253,20 @@ export default function Users() {
           className="px-3 py-2 border border-gray-300 rounded-lg w-72 focus:ring-2 focus:ring-runa-orange focus:border-runa-orange"
           aria-label="Поиск по email или имени"
         />
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <span>На странице</span>
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="px-2 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-runa-orange focus:border-runa-orange"
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
@@ -299,8 +333,8 @@ export default function Users() {
               </table>
             </div>
           </div>
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center gap-2">
+          {(totalPages > 1 || data.total > data.items.length) && (
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -310,7 +344,7 @@ export default function Users() {
                 Назад
               </button>
               <span className="text-sm text-gray-600">
-                Страница {page} из {totalPages} (всего {data.total})
+                Страница {page} из {Math.max(1, totalPages)} · записей на странице {data.items.length} · всего в приложении {data.total}
               </span>
               <button
                 type="button"
