@@ -75,7 +75,7 @@ export function ServerPage() {
       setMetricsErr(e instanceof Error ? e.message : String(e));
     }
     try {
-      const log = await fetchSecurityAccessLog(60);
+      const log = await fetchSecurityAccessLog(50);
       setLogEntries(log.entries);
     } catch {
       /* ignore */
@@ -304,8 +304,9 @@ export function ServerPage() {
       >
         <h2 className={`${s.blockTitle} ${isDark ? s.blockTitleDark : ''}`}>Безопасность панели</h2>
         <p className={`${s.blockHint}${dk}`}>
-          Попытки входа, отказы по региону (если заданы страны и Cloudflare), обращения к API. Список в памяти
-          процесса (после перезапуска бэкенда очищается; для постоянного аудита подключите логи nginx/Cloudflare).
+          Попытки входа, отказы по региону (если заданы страны и Cloudflare), обращения к API. Показываются не более 50
+          последних записей. Список в памяти процесса (после перезапуска бэкенда очищается; для
+          постоянного аудита подключите логи nginx/Cloudflare).
         </p>
         {isSuper ? (
           <div className={s.blockRow}>

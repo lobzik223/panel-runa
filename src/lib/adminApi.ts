@@ -531,8 +531,10 @@ export type PanelAccessLogEntryDto = {
   note?: string;
 };
 
-export async function fetchSecurityAccessLog(limit = 80): Promise<{ entries: PanelAccessLogEntryDto[] }> {
-  return adminJson(`/admin/security/access-log?limit=${encodeURIComponent(String(limit))}`);
+/** Журнал доступа к панели: не более 50 последних записей (сервер тоже ограничивает). */
+export async function fetchSecurityAccessLog(limit = 50): Promise<{ entries: PanelAccessLogEntryDto[] }> {
+  const capped = Math.min(50, Math.max(1, limit));
+  return adminJson(`/admin/security/access-log?limit=${encodeURIComponent(String(capped))}`);
 }
 
 export async function fetchBlockedPanelIps(): Promise<{ ips: string[] } | null> {
