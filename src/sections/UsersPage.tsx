@@ -81,6 +81,12 @@ function deviceLabel(platform: string | null): string {
   return platform;
 }
 
+function reviewExemptActive(u: AdminUserDto): boolean {
+  const raw = u.storeReviewExemptUntil;
+  if (!raw) return false;
+  return new Date(raw).getTime() > Date.now();
+}
+
 function normalizePlanPick(t: string): 'free' | 'lite' | 'pro' | 'business' {
   const x = (t || 'free').toLowerCase();
   if (x === 'lite' || x === 'life') return 'lite';
@@ -223,11 +229,42 @@ export function UsersPage() {
     }
   };
 
+  const handleGrantStoreReviewExempt = async (days: number) => {
+    if (!selectedId) return;
+    const until = new Date();
+    until.setUTCDate(until.getUTCDate() + days);
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      await patchAdminUser(selectedId, { storeReviewExemptUntil: until.toISOString() });
+      await refreshDetailAfterAction(selectedId);
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleClearStoreReviewExempt = async () => {
+    if (!selectedId) return;
+    if (!window.confirm('Снять льготу ревью стора? Квоты снова станут обычными для текущего тарифа.')) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      await patchAdminUser(selectedId, { storeReviewExemptUntil: null });
+      await refreshDetailAfterAction(selectedId);
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const handleAppReviewExpiredDemo = async () => {
     if (!selectedId) return;
     if (
       !window.confirm(
-        'Выставить состояние для App Review: тариф Lite в БД, дата оплаты и триал в прошлом? В приложении будет доступен полный флоу покупки подписки.',
+        'Только для проверки экрана покупки: в БД будет Lite с оплатой и триалом в прошлом — в приложении появится «тариф завершён» и призыв к подписке. Льгота ревью при этом сбросится. Для обычного прохода ревьюера используйте «Льгота ревью стора (квоты)». Продолжить?',
       )
     ) {
       return;
@@ -460,6 +497,16 @@ export function UsersPage() {
                   <InfoField label="Реферал (id)" value={selectedUser.referredByUserId || '—'} dk={dk} />
                   <InfoField label="Дата регистрации" value={formatDateRu(selectedUser.createdAt)} dk={dk} />
                   <InfoField label="Квоты заблокированы" value={selectedUser.freeQuotaSuspended ? 'Да' : 'Нет'} dk={dk} warn={selectedUser.freeQuotaSuspended} />
+                  <InfoField
+                    label="Льгота ревью стора (квоты до)"
+                    value={
+                      selectedUser.storeReviewExemptUntil
+                        ? `${formatDateTimeRu(selectedUser.storeReviewExemptUntil)}${reviewExemptActive(selectedUser) ? '' : ' (истекла)'}`
+                        : '—'
+                    }
+                    dk={dk}
+                    accent={reviewExemptActive(selectedUser)}
+                  />
                   {selectedUser.freeQuotaSuspended ? (
                     <InfoField
                       label="Причина блокировки"
@@ -572,11 +619,45 @@ export function UsersPage() {
                     </button>
                   </div>
 
-                  <div className={`${s.actionCard}${dk}`}>
-                    <h4 className={s.actionTitle}>Демо App Review (истёкшая подписка)</h4>
+                  <div className={`${s.actionCard}${dk} ${s.actionCardWide}`}>
+                    <h4 className={s.actionTitle}>Льгота ревью App Store / Google Play</h4>
                     <p className={`${s.actionDesc}${dk}`}>
-                      Lite, оплата и 5‑дневный триал в прошлом — без автостарта нового триала; для учётных данных в App
-                      Store Connect
+                      Пока дата не истекла, в приложении действуют широкие квоты (как Business) без оплаты — удобно для
+                      аккаунта, которым пользуется ревьюер. Не путать с кнопкой «истёкшая подписка» ниже.
+                    </p>
+                    <div className={s.actionsRow}>
+                      <button
+                        type="button"
+                        className={`${s.actionBtn} ${s.actionBtnGreen}`}
+                        disabled={actionBusy}
+                        onClick={() => void handleGrantStoreReviewExempt(90)}
+                      >
+                        Включить на 90 дней
+                      </button>
+                      <button
+                        type="button"
+                        className={`${s.actionBtn} ${s.actionBtnGreen}`}
+                        disabled={actionBusy}
+                        onClick={() => void handleGrantStoreReviewExempt(180)}
+                      >
+                        На 180 дней
+                      </button>
+                      <button
+                        type="button"
+                        className={`${s.actionBtn} ${s.actionBtnOrange}`}
+                        disabled={actionBusy || !reviewExemptActive(selectedUser)}
+                        onClick={() => void handleClearStoreReviewExempt()}
+                      >
+                        Снять льготу
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={`${s.actionCard}${dk}`}>
+                    <h4 className={s.actionTitle}>Демо: истёкшая подписка (только тест IAP)</h4>
+                    <p className={`${s.actionDesc}${dk}`}>
+                      Специально ломает «активную» подписку в UI, чтобы проверить экран покупки. Для нормальной проверки
+                      функций не использовать — вместо этого «Льгота ревью» или сброс на Free.
                     </p>
                     <button
                       type="button"
@@ -584,7 +665,7 @@ export function UsersPage() {
                       disabled={actionBusy}
                       onClick={() => void handleAppReviewExpiredDemo()}
                     >
-                      Выставить для ревью Apple
+                      Выставить «истёкшую» Lite
                     </button>
                   </div>
 

@@ -417,6 +417,8 @@ export type AdminUserDto = {
   frozenDaysLeft: number | null;
   /** Сколько раз этот аккаунт уходил в soft-delete (для анти-абьюза и статистики). */
   deletionCount: number;
+  /** До этой даты — лимиты Business для ревью App Store / Google Play (без оплаты). */
+  storeReviewExemptUntil?: string | null;
 };
 
 export type AdminEntitlementDto = {
@@ -599,6 +601,7 @@ export async function patchAdminUser(
     blockReason?: string;
     paidSubscriptionExpiresAt?: string | null;
     clearTrial?: boolean;
+    storeReviewExemptUntil?: string | null;
   }
 ): Promise<{ user: AdminUserDto; entitlements: AdminEntitlementDto[] }> {
   return adminJson(`/admin/users/${encodeURIComponent(userId)}`, {
