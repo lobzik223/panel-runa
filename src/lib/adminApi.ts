@@ -611,6 +611,18 @@ export async function postClearUserDeviceBindings(userId: string): Promise<{
   });
 }
 
+/** Lite + истёкшая оплата и триал (запрос Apple на демо с expired subscription). */
+export async function postAppReviewExpiredDemo(userId: string): Promise<{
+  ok: boolean;
+  user: AdminUserDto;
+  entitlements: AdminEntitlementDto[];
+}> {
+  return adminJson(`/admin/users/${encodeURIComponent(userId)}/app-review-expired-demo`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 // ─── Data links (графики и данные) ─────────────────────────
 
 export type DataLinkType = 'excel' | 'google-sheets' | 'google-docs';

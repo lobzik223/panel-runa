@@ -9,6 +9,7 @@ import {
   fetchAdminUsers,
   fetchAdminUserDetail,
   patchAdminUser,
+  postAppReviewExpiredDemo,
   postClearUserDeviceBindings,
 } from '@/lib/adminApi';
 
@@ -202,6 +203,29 @@ export function UsersPage() {
     try {
       await patchAdminUser(selectedId, { subscriptionTier: 'free', clearTrial: true });
       await refreshDetailAfterAction(selectedId);
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleAppReviewExpiredDemo = async () => {
+    if (!selectedId) return;
+    if (
+      !window.confirm(
+        'Выставить состояние для App Review: тариф Lite в БД, дата оплаты и триал в прошлом? В приложении будет доступен полный флоу покупки подписки.',
+      )
+    ) {
+      return;
+    }
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const r = await postAppReviewExpiredDemo(selectedId);
+      setDetailUser(r.user);
+      setEntitlements(r.entitlements);
+      await loadList();
     } catch (e) {
       setActionError((e as Error).message);
     } finally {
@@ -520,6 +544,22 @@ export function UsersPage() {
                       onClick={() => void handleResetFree()}
                     >
                       Сбросить на Free
+                    </button>
+                  </div>
+
+                  <div className={`${s.actionCard}${dk}`}>
+                    <h4 className={s.actionTitle}>Демо App Review (истёкшая подписка)</h4>
+                    <p className={`${s.actionDesc}${dk}`}>
+                      Lite, оплата и 5‑дневный триал в прошлом — без автостарта нового триала; для учётных данных в App
+                      Store Connect
+                    </p>
+                    <button
+                      type="button"
+                      className={`${s.actionBtn} ${s.actionBtnBlue}`}
+                      disabled={actionBusy}
+                      onClick={() => void handleAppReviewExpiredDemo()}
+                    >
+                      Выставить для ревью Apple
                     </button>
                   </div>
 
