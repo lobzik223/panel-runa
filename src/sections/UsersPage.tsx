@@ -54,8 +54,20 @@ function tierLabel(t: string): string {
   return m[x] || t;
 }
 
-function statusFromUser(u: AdminUserDto): 'Активен' | 'Заблокирован' {
-  return u.freeQuotaSuspended ? 'Заблокирован' : 'Активен';
+type UserStatus = 'Активен' | 'Заблокирован' | 'Заморожен';
+
+/** Приоритет: заморожен (soft-delete, будет стёрт) > заблокирован (квоты) > активен. */
+function statusFromUser(u: AdminUserDto): UserStatus {
+  if (u.deletedAt && (u.frozenDaysLeft ?? 0) > 0) return 'Заморожен';
+  if (u.freeQuotaSuspended) return 'Заблокирован';
+  return 'Активен';
+}
+
+function formatFrozenHint(u: AdminUserDto): string | null {
+  if (!u.deletedAt) return null;
+  const days = u.frozenDaysLeft ?? 0;
+  if (days <= 0) return 'Срок восстановления истёк — будет удалён ближайшим прогоном очистки.';
+  return `Заморожен до ${formatDateTimeRu(u.restorableUntil)} · осталось ${days} дн. · кол-во удалений: ${u.deletionCount}`;
 }
 
 function roleFromUser(u: AdminUserDto): string {
@@ -169,6 +181,7 @@ export function UsersPage() {
   const statusClass = (st: string) => {
     if (st === 'Активен') return s.badgeGreen;
     if (st === 'Заблокирован') return s.badgeRed;
+    if (st === 'Заморожен') return s.badgeRed;
     return s.badgeGray;
   };
 
@@ -347,7 +360,14 @@ export function UsersPage() {
                     </td>
                     <td>{formatDateRu(u.createdAt)}</td>
                     <td>
-                      <span className={`${s.badge} ${statusClass(st)}`}>{st}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span className={`${s.badge} ${statusClass(st)}`}>{st}</span>
+                        {st === 'Заморожен' ? (
+                          <span className={`${s.userEmail}${dk}`} style={{ fontSize: 11 }}>
+                            ост. {u.frozenDaysLeft ?? 0} дн.
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td>
                       <span className={`${s.openArrow}${dk}`}>→</span>
@@ -376,6 +396,11 @@ export function UsersPage() {
                   </span>
                   <span className={`${s.onlineLabel}`}>Обновлён: {formatDateTimeRu(selectedUser.updatedAt)}</span>
                 </div>
+                {selectedUser.deletedAt ? (
+                  <p className={`${s.inlineError}${dk}`} style={{ marginTop: 8 }}>
+                    {formatFrozenHint(selectedUser)}
+                  </p>
+                ) : null}
               </div>
               <button type="button" className={`${s.closeBtn}${dk}`} onClick={closeUser}>
                 ✕

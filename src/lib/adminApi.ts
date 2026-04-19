@@ -409,6 +409,14 @@ export type AdminUserDto = {
   deviceBindingCount: number;
   /** Причина блокировки квот (из панели) */
   adminBlockReason: string | null;
+  /** Метка soft-delete. Если не null — аккаунт "заморожен" и будет жёстко удалён после льготного периода. */
+  deletedAt: string | null;
+  /** До какой даты аккаунт можно восстановить (deletedAt + 30 дней). */
+  restorableUntil: string | null;
+  /** Сколько дней осталось до жёсткого удаления (целое, с округлением вверх). */
+  frozenDaysLeft: number | null;
+  /** Сколько раз этот аккаунт уходил в soft-delete (для анти-абьюза и статистики). */
+  deletionCount: number;
 };
 
 export type AdminEntitlementDto = {
