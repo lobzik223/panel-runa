@@ -625,6 +625,20 @@ export function UsersPage() {
                       Пока дата не истекла, в приложении действуют широкие квоты (как Business) без оплаты — удобно для
                       аккаунта, которым пользуется ревьюер. Не путать с кнопкой «истёкшая подписка» ниже.
                     </p>
+                    <p
+                      className={`${s.actionDesc}${dk}`}
+                      style={{
+                        marginTop: 8,
+                        fontWeight: 600,
+                        color: reviewExemptActive(selectedUser) ? '#10b981' : undefined,
+                      }}
+                    >
+                      {reviewExemptActive(selectedUser)
+                        ? `Активна до ${formatDateTimeRu(selectedUser.storeReviewExemptUntil ?? null)}`
+                        : selectedUser.storeReviewExemptUntil
+                          ? `Истекла: ${formatDateTimeRu(selectedUser.storeReviewExemptUntil ?? null)}`
+                          : 'Статус: не выдана'}
+                    </p>
                     <div className={s.actionsRow}>
                       <button
                         type="button"
