@@ -264,7 +264,7 @@ export function UsersPage() {
     if (!selectedId) return;
     if (
       !window.confirm(
-        'Только для проверки экрана покупки: в БД будет Lite с оплатой и триалом в прошлом — в приложении появится «тариф завершён» и призыв к подписке. Льгота ревью при этом сбросится. Для обычного прохода ревьюера используйте «Льгота ревью стора (квоты)». Продолжить?',
+        'Только для проверки экрана покупки: в БД будет Lite с оплатой и триалом в прошлом — в приложении появится «тариф завершён» и призыв к подписке. Льгота ревью при этом сбросится. Для обычного прохода ревьюера используйте «Льгота ревью стора (продление)». Продолжить?',
       )
     ) {
       return;
@@ -498,7 +498,7 @@ export function UsersPage() {
                   <InfoField label="Дата регистрации" value={formatDateRu(selectedUser.createdAt)} dk={dk} />
                   <InfoField label="Квоты заблокированы" value={selectedUser.freeQuotaSuspended ? 'Да' : 'Нет'} dk={dk} warn={selectedUser.freeQuotaSuspended} />
                   <InfoField
-                    label="Льгота ревью стора (квоты до)"
+                    label="Льгота ревью стора (продление до)"
                     value={
                       selectedUser.storeReviewExemptUntil
                         ? `${formatDateTimeRu(selectedUser.storeReviewExemptUntil)}${reviewExemptActive(selectedUser) ? '' : ' (истекла)'}`
@@ -622,8 +622,11 @@ export function UsersPage() {
                   <div className={`${s.actionCard}${dk} ${s.actionCardWide}`}>
                     <h4 className={s.actionTitle}>Льгота ревью App Store / Google Play</h4>
                     <p className={`${s.actionDesc}${dk}`}>
-                      Пока дата не истекла, в приложении действуют широкие квоты (как Business) без оплаты — удобно для
-                      аккаунта, которым пользуется ревьюер. Не путать с кнопкой «истёкшая подписка» ниже.
+                      Продлевает срок действия текущего триала или платной подписки пользователя до указанной даты.
+                      Тариф и лимиты (слайды, PDF, токены, CV, хранилище) не меняются — ревьюер видит ровно то же
+                      приложение, что обычный пользователь его тарифа, только с удлинённым сроком для проверки.
+                      Например: Free-юзер с триалом на 5 дней + льгота 180 дней = триал действует ~180 дней. Не
+                      путать с кнопкой «истёкшая подписка» ниже.
                     </p>
                     <p
                       className={`${s.actionDesc}${dk}`}
