@@ -6,6 +6,7 @@ import s from './UsersPage.module.css';
 import {
   type AdminUserDto,
   type AdminEntitlementDto,
+  type AdminYookassaSitePaymentDto,
   fetchAdminUsers,
   fetchAdminUserDetail,
   patchAdminUser,
@@ -110,6 +111,7 @@ export function UsersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailUser, setDetailUser] = useState<AdminUserDto | null>(null);
   const [entitlements, setEntitlements] = useState<AdminEntitlementDto[]>([]);
+  const [yookassaSitePayments, setYookassaSitePayments] = useState<AdminYookassaSitePaymentDto[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -150,6 +152,7 @@ export function UsersPage() {
     setSelectedId(u.id);
     setDetailUser(u);
     setEntitlements([]);
+    setYookassaSitePayments([]);
     setActiveTab('info');
     setDetailError(null);
     setActionError(null);
@@ -159,6 +162,7 @@ export function UsersPage() {
       const r = await fetchAdminUserDetail(u.id);
       setDetailUser(r.user);
       setEntitlements(r.entitlements);
+      setYookassaSitePayments(r.yookassaSitePayments);
       setSelectedPlan(normalizePlanPick(r.user.subscriptionTier));
     } catch (e) {
       setDetailError((e as Error).message);
@@ -171,6 +175,7 @@ export function UsersPage() {
     setSelectedId(null);
     setDetailUser(null);
     setEntitlements([]);
+    setYookassaSitePayments([]);
     setShowBanModal(false);
     setShowPlanModal(false);
     setDetailError(null);
@@ -181,6 +186,7 @@ export function UsersPage() {
     const r = await fetchAdminUserDetail(userId);
     setDetailUser(r.user);
     setEntitlements(r.entitlements);
+    setYookassaSitePayments(r.yookassaSitePayments);
     await loadList();
   };
 
@@ -275,6 +281,7 @@ export function UsersPage() {
       const r = await postAppReviewExpiredDemo(selectedId);
       setDetailUser(r.user);
       setEntitlements(r.entitlements);
+      setYookassaSitePayments(r.yookassaSitePayments);
       await loadList();
     } catch (e) {
       setActionError((e as Error).message);
@@ -467,7 +474,7 @@ export function UsersPage() {
                 className={`${s.tab} ${activeTab === 'purchases' ? s.tabActive : ''}${dk}`}
                 onClick={() => setActiveTab('purchases')}
               >
-                Покупки (store)
+                Покупки
               </button>
               <button
                 type="button"
@@ -558,29 +565,61 @@ export function UsersPage() {
 
             {activeTab === 'purchases' && selectedUser && (
               <div className={s.tabContent}>
-                <p className={`${s.purchasesHint}${dk}`}>Подписки из App Store / Google Play (таблица store_entitlements)</p>
-                {entitlements.length === 0 ? (
-                  <p className={`${s.emptyMsg}${dk}`}>Нет записей о подписках в магазинах</p>
+                {entitlements.length === 0 && yookassaSitePayments.length === 0 ? (
+                  <p className={`${s.emptyMsg}${dk}`}>
+                    Нет записей: ни подписок в магазинах, ни оплат на сайте (ЮKassa).
+                  </p>
                 ) : (
-                  <div className={s.purchasesList}>
-                    {entitlements.map((p) => {
-                      const expired = new Date(p.expiresAt).getTime() < Date.now();
-                      return (
-                        <div key={p.id} className={`${s.purchaseCard}${dk}`}>
-                          <div className={s.purchaseLeft}>
-                            <span className={`${s.purchasePlan}${dk}`}>{p.productId}</span>
-                            <span className={`${s.purchaseDate}${dk}`}>
-                              {p.platform} · до {formatDateRu(p.expiresAt)}
-                            </span>
+                  <>
+                    <p className={`${s.purchasesHint}${dk}`}>App Store / Google Play · таблица store_entitlements</p>
+                    {entitlements.length === 0 ? (
+                      <p className={`${s.emptyMsg}${dk}`}>Нет записей о подписках в магазинах</p>
+                    ) : (
+                      <div className={s.purchasesList}>
+                        {entitlements.map((p) => {
+                          const expired = new Date(p.expiresAt).getTime() < Date.now();
+                          return (
+                            <div key={p.id} className={`${s.purchaseCard}${dk}`}>
+                              <div className={s.purchaseLeft}>
+                                <span className={`${s.purchasePlan}${dk}`}>{p.productId}</span>
+                                <span className={`${s.purchaseDate}${dk}`}>
+                                  {p.platform} · до {formatDateRu(p.expiresAt)}
+                                </span>
+                              </div>
+                              <div className={s.purchaseRight}>
+                                <span className={`${s.purchaseDate}${dk}`}>{formatDateRu(p.createdAt)}</span>
+                                <span className={`${s.badge} ${purchaseStatusClass(expired)}`}>{purchaseStatusLabel(expired)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <p className={`${s.purchasesHint} ${s.purchasesBlockSpacer}${dk}`}>
+                      Оплата на сайте (ЮKassa) · таблица yookassa_site_payment_applications — начисление тарифа после успешной
+                      оплаты
+                    </p>
+                    {yookassaSitePayments.length === 0 ? (
+                      <p className={`${s.emptyMsg}${dk}`}>Нет записей об оплатах через ЮKassa</p>
+                    ) : (
+                      <div className={s.purchasesList}>
+                        {yookassaSitePayments.map((p) => (
+                          <div key={p.paymentId} className={`${s.purchaseCard}${dk}`}>
+                            <div className={s.purchaseLeft}>
+                              <span className={`${s.purchasePlan}${dk}`}>{p.planName}</span>
+                              <span className={`${s.purchaseDate}${dk}`}>
+                                Тариф: {tierLabel(p.appliedTier)} · платёж {p.paymentId}
+                              </span>
+                            </div>
+                            <div className={s.purchaseRight}>
+                              <span className={`${s.purchaseDate}${dk}`}>Начислено: {formatDateTimeRu(p.appliedAt)}</span>
+                              <span className={`${s.badge} ${s.badgeGreen}`}>ЮKassa</span>
+                            </div>
                           </div>
-                          <div className={s.purchaseRight}>
-                            <span className={`${s.purchaseDate}${dk}`}>{formatDateRu(p.createdAt)}</span>
-                            <span className={`${s.badge} ${purchaseStatusClass(expired)}`}>{purchaseStatusLabel(expired)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

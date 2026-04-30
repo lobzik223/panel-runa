@@ -429,6 +429,14 @@ export type AdminEntitlementDto = {
   createdAt: string;
 };
 
+export type AdminYookassaSitePaymentDto = {
+  paymentId: string;
+  planName: string;
+  appliedTier: string;
+  /** Когда тариф был начислен на аккаунт после успешной оплаты. */
+  appliedAt: string;
+};
+
 async function adminRequest(path: string, init?: RequestInit): Promise<Response> {
   const base = getApiBase();
   const auth = getAdminAuthHeaders();
@@ -589,6 +597,7 @@ export async function fetchAdminUsers(params: { q?: string; limit?: number; offs
 export async function fetchAdminUserDetail(userId: string): Promise<{
   user: AdminUserDto;
   entitlements: AdminEntitlementDto[];
+  yookassaSitePayments: AdminYookassaSitePaymentDto[];
 }> {
   return adminJson(`/admin/users/${encodeURIComponent(userId)}`);
 }
@@ -603,7 +612,7 @@ export async function patchAdminUser(
     clearTrial?: boolean;
     storeReviewExemptUntil?: string | null;
   }
-): Promise<{ user: AdminUserDto; entitlements: AdminEntitlementDto[] }> {
+): Promise<{ user: AdminUserDto; entitlements: AdminEntitlementDto[]; yookassaSitePayments: AdminYookassaSitePaymentDto[] }> {
   return adminJson(`/admin/users/${encodeURIComponent(userId)}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
@@ -627,6 +636,7 @@ export async function postAppReviewExpiredDemo(userId: string): Promise<{
   ok: boolean;
   user: AdminUserDto;
   entitlements: AdminEntitlementDto[];
+  yookassaSitePayments: AdminYookassaSitePaymentDto[];
 }> {
   return adminJson(`/admin/users/${encodeURIComponent(userId)}/app-review-expired-demo`, {
     method: 'POST',

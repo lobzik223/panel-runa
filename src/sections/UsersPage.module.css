@@ -161,6 +161,7 @@
 /* Purchases */
 .purchasesHint { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
 .purchasesHint.dk { color: #6b7280; }
+.purchasesBlockSpacer { margin-top: 24px; }
 .emptyMsg { font-size: 14px; color: #9ca3af; text-align: center; padding: 24px 0; }
 .emptyMsg.dk { color: #6b7280; }
 
