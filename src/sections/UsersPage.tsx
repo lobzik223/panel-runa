@@ -107,6 +107,9 @@ export function UsersPage() {
   const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  /** Страница списка: 0-based. API: limit до 100. */
+  const [pageSize, setPageSize] = useState(25);
+  const [pageIndex, setPageIndex] = useState(0);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailUser, setDetailUser] = useState<AdminUserDto | null>(null);
@@ -128,11 +131,16 @@ export function UsersPage() {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
+  useEffect(() => {
+    setPageIndex(0);
+  }, [debouncedQ, pageSize]);
+
   const loadList = useCallback(async () => {
     setListLoading(true);
     setListError(null);
+    const offset = pageIndex * pageSize;
     try {
-      const r = await fetchAdminUsers({ q: debouncedQ, limit: 80, offset: 0 });
+      const r = await fetchAdminUsers({ q: debouncedQ, limit: pageSize, offset });
       setList(r.users);
       setTotal(r.total);
     } catch (e) {
@@ -142,11 +150,21 @@ export function UsersPage() {
     } finally {
       setListLoading(false);
     }
-  }, [debouncedQ]);
+  }, [debouncedQ, pageIndex, pageSize]);
 
   useEffect(() => {
     void loadList();
   }, [loadList]);
+
+  useEffect(() => {
+    if (listLoading || total < 0) return;
+    if (total === 0 && pageIndex !== 0) {
+      setPageIndex(0);
+      return;
+    }
+    const maxIdx = Math.max(0, Math.ceil(total / pageSize) - 1);
+    if (pageIndex > maxIdx) setPageIndex(maxIdx);
+  }, [listLoading, total, pageSize, pageIndex]);
 
   const openUser = async (u: AdminUserDto) => {
     setSelectedId(u.id);
@@ -321,11 +339,16 @@ export function UsersPage() {
 
   const q = searchQuery.trim().toLowerCase();
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(pageIndex, Math.max(0, totalPages - 1));
+  const fromIdx = total === 0 ? 0 : safePage * pageSize + 1;
+  const toIdx = total === 0 ? 0 : Math.min(total, safePage * pageSize + list.length);
+
   return (
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Пользователи</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Все пользователи приложения. Нажмите на строку, чтобы открыть профиль.
+        Список с разбивкой по страницам: выберите, сколько строк показывать, и листайте вперёд/назад. Строка — открыть карточку пользователя.
       </p>
 
       {listError ? (
@@ -344,8 +367,54 @@ export function UsersPage() {
           className={`${s.searchInput}${dk}`}
         />
         <span className={`${s.searchCount}${dk}`}>
-          {listLoading ? '…' : `${list.length} из ${total}`}
+          {listLoading ? '…' : `В базе: ${total.toLocaleString('ru-RU')}`}
         </span>
+      </div>
+
+      <div className={`${s.listToolbar}${dk}`}>
+        <div className={s.listToolbarLeft}>
+          <span className={`${s.rangeText}${dk}`}>
+            {listLoading ? 'Загрузка…' : `Показано ${fromIdx.toLocaleString('ru-RU')}–${toIdx.toLocaleString('ru-RU')} из ${total.toLocaleString('ru-RU')}`}
+          </span>
+          {total > 0 && !listLoading ? (
+            <span className={`${s.pageHint}${dk}`}>
+              Стр. {safePage + 1} / {totalPages}
+            </span>
+          ) : null}
+        </div>
+        <div className={s.listToolbarRight}>
+          <label className={`${s.pageSizeLabel}${dk}`}>
+            <span className={s.pageSizeLabelText}>На странице</span>
+            <select
+              className={`${s.pageSizeSelect}${dk}`}
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              disabled={listLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </label>
+          <div className={s.pageNav}>
+            <button
+              type="button"
+              className={`${s.pageBtn}${dk}`}
+              disabled={listLoading || safePage <= 0}
+              onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+            >
+              Назад
+            </button>
+            <button
+              type="button"
+              className={`${s.pageBtn}${dk}`}
+              disabled={listLoading || safePage >= totalPages - 1 || total === 0}
+              onClick={() => setPageIndex((p) => p + 1)}
+            >
+              Вперёд
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className={`${styles.tableWrap} ${isDark ? styles.tableWrapDark : ''}`}>
