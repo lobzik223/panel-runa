@@ -1,0 +1,185 @@
+.periodRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.periodLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.periodLabelDark {
+  color: #9ca3af;
+}
+
+.periodSelect {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+}
+
+.periodSelectDark {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 140px;
+  padding: 12px 0;
+  overflow-x: auto;
+}
+
+.chartBarCol {
+  flex: 1;
+  min-width: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chartBar {
+  width: 100%;
+  max-width: 36px;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  min-height: 4px;
+}
+
+.chartBarDark {
+  background: linear-gradient(180deg, #818cf8, #a78bfa);
+}
+
+.chartBarLabel {
+  font-size: 10px;
+  color: #9ca3af;
+  transform: rotate(-45deg);
+  white-space: nowrap;
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pieList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pieRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+  gap: 12px;
+}
+
+.pieRowDark {
+  border-bottom-color: #374151;
+}
+
+.pieDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.funnelStep {
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.funnelStepDark {
+  background: #111827;
+  border-color: #374151;
+}
+
+.funnelArrow {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 18px;
+}
+
+.tierGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .tierGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tierChip {
+  padding: 12px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.tierChipDark {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.noteEditor {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.noteEditorDark {
+  background: #111827;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+.tagChip {
+  display: inline-block;
+  padding: 4px 10px;
+  margin: 4px 4px 0 0;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #eef2ff;
+  color: #4338ca;
+  cursor: pointer;
+}
+
+.tagChipDark {
+  background: #312e81;
+  color: #c7d2fe;
+}
+
+.tagChipActive {
+  background: #4f46e5;
+  color: #fff;
+}

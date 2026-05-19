@@ -106,7 +106,8 @@ export type AdminProfileDto = {
 /** Подпись роли для UI (RU). */
 export function formatAdminRoleRu(role: string | null | undefined): string {
   const r = (role || '').toLowerCase();
-  if (r === 'superadmin') return 'Главный администратор';
+  if (r === 'superadmin' || r === 'super_admin') return 'Главный администратор';
+  if (r === 'finance_analyst') return 'Финансовый аналитик';
   if (r === 'admin') return 'Администратор';
   return 'Администратор';
 }
@@ -437,7 +438,7 @@ export type AdminYookassaSitePaymentDto = {
   appliedAt: string;
 };
 
-async function adminRequest(path: string, init?: RequestInit): Promise<Response> {
+export async function adminRequest(path: string, init?: RequestInit): Promise<Response> {
   const base = getApiBase();
   const auth = getAdminAuthHeaders();
   const url = base ? `${base}${path}` : path;
@@ -459,7 +460,7 @@ async function adminRequest(path: string, init?: RequestInit): Promise<Response>
   }
 }
 
-async function adminJson<T>(path: string, init?: RequestInit): Promise<T> {
+export async function adminJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await adminRequest(path, {
     ...init,
     headers: {

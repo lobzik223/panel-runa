@@ -88,6 +88,56 @@ export function IconStats({ className }: { className?: string }) {
   );
 }
 
+export function IconChartBar({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M4 20V10" />
+      <path d="M10 20V4" />
+      <path d="M16 20v-6" />
+      <path d="M22 20H2" />
+    </svg>
+  );
+}
+
+export function IconWallet({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M3 7h15a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+      <path d="M3 7V5a2 2 0 0 1 2-2h12" />
+      <path d="M17 14h.01" />
+    </svg>
+  );
+}
+
+export function IconCpu({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <path d="M9 9h6v6H9z" />
+      <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+    </svg>
+  );
+}
+
+export function IconNote({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M10 13h4M10 17h4" />
+    </svg>
+  );
+}
+
+export function IconFilePdf({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M10 12h4M10 16h2" />
+    </svg>
+  );
+}
+
 export function IconAdmin({ className }: { className?: string }) {
   return (
     <svg {...common} className={className} aria-hidden>

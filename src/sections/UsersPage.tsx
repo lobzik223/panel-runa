@@ -13,6 +13,8 @@ import {
   postAppReviewExpiredDemo,
   postClearUserDeviceBindings,
 } from '@/lib/adminApi';
+import { fetchUserFinanceSummary, formatRub, formatTokens } from '@/lib/financeApi';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 const PLAN_OPTIONS: { value: 'free' | 'lite' | 'pro' | 'business'; label: string }[] = [
   { value: 'free', label: 'Free' },
@@ -100,6 +102,7 @@ export function UsersPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const dk = isDark ? ' ' + s.dk : '';
+  const { canManageUsers } = useAdminRole();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -119,7 +122,9 @@ export function UsersPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'info' | 'purchases' | 'actions'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'purchases' | 'finance' | 'actions'>('info');
+  const [financeSummary, setFinanceSummary] = useState<Awaited<ReturnType<typeof fetchUserFinanceSummary>> | null>(null);
+  const [financeLoading, setFinanceLoading] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
   const [banReason, setBanReason] = useState(BAN_REASONS[0]);
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -172,6 +177,7 @@ export function UsersPage() {
     setEntitlements([]);
     setYookassaSitePayments([]);
     setActiveTab('info');
+    setFinanceSummary(null);
     setDetailError(null);
     setActionError(null);
     setSelectedPlan(normalizePlanPick(u.subscriptionTier));
@@ -189,11 +195,31 @@ export function UsersPage() {
     }
   };
 
+  useEffect(() => {
+    if (activeTab !== 'finance' || !selectedId) return;
+    let cancelled = false;
+    setFinanceLoading(true);
+    void (async () => {
+      try {
+        const data = await fetchUserFinanceSummary(selectedId, 'month');
+        if (!cancelled) setFinanceSummary(data);
+      } catch (e) {
+        if (!cancelled) setActionError((e as Error).message);
+      } finally {
+        if (!cancelled) setFinanceLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, selectedId]);
+
   const closeUser = () => {
     setSelectedId(null);
     setDetailUser(null);
     setEntitlements([]);
     setYookassaSitePayments([]);
+    setFinanceSummary(null);
     setShowBanModal(false);
     setShowPlanModal(false);
     setDetailError(null);
@@ -547,11 +573,20 @@ export function UsersPage() {
               </button>
               <button
                 type="button"
-                className={`${s.tab} ${activeTab === 'actions' ? s.tabActive : ''}${dk}`}
-                onClick={() => setActiveTab('actions')}
+                className={`${s.tab} ${activeTab === 'finance' ? s.tabActive : ''}${dk}`}
+                onClick={() => setActiveTab('finance')}
               >
-                Действия
+                Финансы
               </button>
+              {canManageUsers ? (
+                <button
+                  type="button"
+                  className={`${s.tab} ${activeTab === 'actions' ? s.tabActive : ''}${dk}`}
+                  onClick={() => setActiveTab('actions')}
+                >
+                  Действия
+                </button>
+              ) : null}
             </div>
 
             {activeTab === 'info' && selectedUser && (
@@ -592,43 +627,45 @@ export function UsersPage() {
                     />
                   ) : null}
                 </div>
-                <div className={`${s.deviceResetBlock}${dk}`}>
-                  <p className={`${s.deviceResetText}${dk}`}>
-                    Если приложение не даёт зарегистрировать новый аккаунт с этого устройства («уже зарегистрирован»), можно
-                    сбросить привязку: в БД удаляются только HMAC-хэши устройства и таймер повторной отправки кода. Вход по
-                    Google и Apple не сбрасывается (идентификаторы в аккаунте не трогаем).
-                  </p>
-                  <button
-                    type="button"
-                    className={`${s.actionBtn} ${s.actionBtnOrange}`}
-                    disabled={actionBusy || (selectedUser.deviceBindingCount ?? 0) === 0}
-                    onClick={() => {
-                      if (
-                        !window.confirm(
-                          'Сбросить привязку устройства к этому аккаунту? С устройства снова можно будет создать другой аккаунт. Вход через Google/Apple для этого пользователя сохранится.',
-                        )
-                      ) {
-                        return;
-                      }
-                      void (async () => {
-                        if (!selectedId) return;
-                        setActionBusy(true);
-                        setActionError(null);
-                        try {
-                          const r = await postClearUserDeviceBindings(selectedId);
-                          setDetailUser(r.user);
-                          await loadList();
-                        } catch (e) {
-                          setActionError((e as Error).message);
-                        } finally {
-                          setActionBusy(false);
+                {canManageUsers ? (
+                  <div className={`${s.deviceResetBlock}${dk}`}>
+                    <p className={`${s.deviceResetText}${dk}`}>
+                      Если приложение не даёт зарегистрировать новый аккаунт с этого устройства («уже зарегистрирован»), можно
+                      сбросить привязку: в БД удаляются только HMAC-хэши устройства и таймер повторной отправки кода. Вход по
+                      Google и Apple не сбрасывается (идентификаторы в аккаунте не трогаем).
+                    </p>
+                    <button
+                      type="button"
+                      className={`${s.actionBtn} ${s.actionBtnOrange}`}
+                      disabled={actionBusy || (selectedUser.deviceBindingCount ?? 0) === 0}
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            'Сбросить привязку устройства к этому аккаунту? С устройства снова можно будет создать другой аккаунт. Вход через Google/Apple для этого пользователя сохранится.',
+                          )
+                        ) {
+                          return;
                         }
-                      })();
-                    }}
-                  >
-                    Сбросить привязку устройства
-                  </button>
-                </div>
+                        void (async () => {
+                          if (!selectedId) return;
+                          setActionBusy(true);
+                          setActionError(null);
+                          try {
+                            const r = await postClearUserDeviceBindings(selectedId);
+                            setDetailUser(r.user);
+                            await loadList();
+                          } catch (e) {
+                            setActionError((e as Error).message);
+                          } finally {
+                            setActionBusy(false);
+                          }
+                        })();
+                      }}
+                    >
+                      Сбросить привязку устройства
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -693,7 +730,82 @@ export function UsersPage() {
               </div>
             )}
 
-            {activeTab === 'actions' && selectedUser && (
+            {activeTab === 'finance' && selectedUser && (
+              <div className={s.tabContent}>
+                {financeLoading ? (
+                  <p className={`${s.purchasesHint}${dk}`}>Загрузка финансов…</p>
+                ) : financeSummary ? (
+                  <div className={s.infoGrid}>
+                    <InfoField
+                      label="Текущий тариф"
+                      value={tierLabel(selectedUser.subscriptionTier)}
+                      dk={dk}
+                      accent
+                    />
+                    <InfoField
+                      label="Следующее списание / оплата до"
+                      value={formatDateRu(selectedUser.paidSubscriptionExpiresAt)}
+                      dk={dk}
+                    />
+                    <InfoField
+                      label="Покупок подписки"
+                      value={String(financeSummary.finance.purchaseCount)}
+                      dk={dk}
+                    />
+                    <InfoField
+                      label="Всего потрачено"
+                      value={formatRub(financeSummary.finance.totalSpentRub)}
+                      dk={dk}
+                      accent
+                    />
+                    <InfoField
+                      label="Токены текста (всё время / месяц)"
+                      value={`${formatTokens(financeSummary.aiUsage.textGeneration.allTime)} / ${formatTokens(financeSummary.aiUsage.textGeneration.period)}`}
+                      dk={dk}
+                    />
+                    <InfoField
+                      label="Анализ фото"
+                      value={`${formatTokens(financeSummary.aiUsage.imageAnalysis.allTime)} / ${formatTokens(financeSummary.aiUsage.imageAnalysis.period)}`}
+                      dk={dk}
+                    />
+                    <InfoField
+                      label="Генерация слайдов"
+                      value={`${formatTokens(financeSummary.aiUsage.slideGeneration.allTime)} / ${formatTokens(financeSummary.aiUsage.slideGeneration.period)}`}
+                      dk={dk}
+                    />
+                    <InfoField
+                      label="PDF"
+                      value={`${formatTokens(financeSummary.aiUsage.pdfGeneration.allTime)} / ${formatTokens(financeSummary.aiUsage.pdfGeneration.period)}`}
+                      dk={dk}
+                    />
+                  </div>
+                ) : (
+                  <p className={`${s.emptyMsg}${dk}`}>Нет данных</p>
+                )}
+                {financeSummary?.finance.payments.length ? (
+                  <>
+                    <p className={`${s.purchasesHint} ${s.purchasesBlockSpacer}${dk}`}>История ЮKassa</p>
+                    <div className={s.purchasesList}>
+                      {financeSummary.finance.payments.map((p) => (
+                        <div key={p.paymentId} className={`${s.purchaseCard}${dk}`}>
+                          <div className={s.purchaseLeft}>
+                            <span className={`${s.purchasePlan}${dk}`}>{p.planName}</span>
+                            <span className={`${s.purchaseDate}${dk}`}>
+                              {formatDateTimeRu(p.appliedAt)} · {p.paymentId}
+                            </span>
+                          </div>
+                          <div className={s.purchaseRight}>
+                            <span className={`${s.purchaseDate}${dk}`}>{formatRub(p.amountRub)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            )}
+
+            {activeTab === 'actions' && canManageUsers && selectedUser && (
               <div className={s.tabContent}>
                 <div className={s.actionsGrid}>
                   <div className={`${s.actionCard}${dk}`}>
@@ -913,3 +1025,4 @@ function InfoField({
     </div>
   );
 }
+

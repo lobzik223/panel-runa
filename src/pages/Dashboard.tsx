@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Routes, Route, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   IconHome,
@@ -11,6 +11,10 @@ import {
   IconStats,
   IconLink,
   IconReview,
+  IconWallet,
+  IconCpu,
+  IconNote,
+  IconFilePdf,
   IconLogout,
   IconSun,
   IconMoon,
@@ -34,11 +38,19 @@ import {
   setAdminToken,
   fetchAdminProfile,
 } from '@/lib/adminApi';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { FinancePaymentsPage } from '@/sections/finance/FinancePaymentsPage';
+import { FinanceAiCostsPage } from '@/sections/finance/FinanceAiCostsPage';
+import { FinanceAudiencePage } from '@/sections/finance/FinanceAudiencePage';
+import { FinanceNotesPage } from '@/sections/finance/FinanceNotesPage';
+import { FinanceReportsPage } from '@/sections/finance/FinanceReportsPage';
 import s from './Dashboard.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
 
-const NAV_ITEMS: { to: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+type NavItem = { to: string; label: string; Icon: React.ComponentType<{ className?: string }>; sub?: boolean };
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/panel', label: 'Главная', Icon: IconHome },
   { to: '/panel/users', label: 'Пользователи', Icon: IconUsers },
   { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
@@ -48,6 +60,14 @@ const NAV_ITEMS: { to: string; label: string; Icon: React.ComponentType<{ classN
   { to: '/panel/referral-stats', label: 'Статистика', Icon: IconStats },
   { to: '/panel/data-links', label: 'Графики и данные', Icon: IconLink },
   { to: '/panel/reviews', label: 'Отзывы сайта', Icon: IconReview },
+];
+
+const FINANCE_NAV_ITEMS: NavItem[] = [
+  { to: '/panel/finance/payments', label: 'Платежи', Icon: IconWallet, sub: true },
+  { to: '/panel/finance/ai-costs', label: 'Расходы ИИ', Icon: IconCpu, sub: true },
+  { to: '/panel/finance/audience', label: 'Аудитория', Icon: IconStats, sub: true },
+  { to: '/panel/finance/notes', label: 'Заметки', Icon: IconNote, sub: true },
+  { to: '/panel/finance/reports', label: 'Отчёты', Icon: IconFilePdf, sub: true },
 ];
 
 function useClock() {
@@ -85,13 +105,50 @@ const PAGE_TITLES: Record<string, string> = {
   '/panel/referral-stats': 'Статистика',
   '/panel/data-links': 'Графики и данные',
   '/panel/reviews': 'Отзывы сайта',
+  '/panel/finance/payments': 'Платежи',
+  '/panel/finance/ai-costs': 'Расходы ИИ',
+  '/panel/finance/audience': 'Аудитория',
+  '/panel/finance/notes': 'Заметки',
+  '/panel/finance/reports': 'Отчёты',
 };
 
-const IDLE_MS = 4 * 60 * 1000;
+/** Автовыход: только после простоя без действий пользователя (см. список событий ниже). */
+const ADMIN_IDLE_LOGOUT_MS = 20 * 60 * 1000;
+
+function NavItemsList({
+  items,
+  closeMobileNav,
+}: {
+  items: NavItem[];
+  closeMobileNav: () => void;
+}) {
+  return (
+    <>
+      {items.map(({ to, label, Icon, sub }) => (
+        <NavLink
+          key={to}
+          to={to}
+          end={to === '/panel'}
+          className={({ isActive }: { isActive: boolean }) =>
+            `${s.navItem} ${sub ? s.navSubItem : ''} ${isActive ? s.navActive : ''}`
+          }
+          onClick={closeMobileNav}
+        >
+          <span className={s.navDot} />
+          <span className={s.navIcon}>
+            <Icon className={s.navSvg} />
+          </span>
+          <span className={s.navLabel}>{label}</span>
+        </NavLink>
+      ))}
+    </>
+  );
+}
 
 export function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isFinanceAnalyst, canManageUsers, canAccessFinance } = useAdminRole();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const now = useClock();
@@ -134,16 +191,11 @@ export function Dashboard() {
       timer = setTimeout(() => {
         setAdminToken(null);
         navigate('/', { replace: true });
-      }, IDLE_MS);
+      }, ADMIN_IDLE_LOGOUT_MS);
     };
     reset();
-    const events: (keyof WindowEventMap)[] = [
-      'mousedown',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'click',
-    ];
+    /** Только явные действия (клики/тап/клавиши); скролл не сбрасывает таймер — «ничего не нажимал». */
+    const events: (keyof WindowEventMap)[] = ['mousedown', 'keydown', 'touchstart', 'click'];
     events.forEach((ev) => globalThis.addEventListener(ev, reset, { passive: true }));
     return () => {
       clearTimeout(timer);
@@ -158,6 +210,24 @@ export function Dashboard() {
   const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
   const adminRoleLabel = formatAdminRoleRu(getAdminRole());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const visibleAdminNav = useMemo(() => {
+    if (isFinanceAnalyst) {
+      return [{ to: '/panel/users', label: 'Пользователи', Icon: IconUsers }];
+    }
+    return ADMIN_NAV_ITEMS;
+  }, [isFinanceAnalyst]);
+
+  useEffect(() => {
+    if (!isFinanceAnalyst) return;
+    const p = location.pathname;
+    const allowed =
+      p.startsWith('/panel/finance') ||
+      p.startsWith('/panel/users');
+    if (!allowed) {
+      navigate('/panel/finance/payments', { replace: true });
+    }
+  }, [isFinanceAnalyst, location.pathname, navigate]);
 
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
 
@@ -216,23 +286,13 @@ export function Dashboard() {
 
           {/* Nav */}
           <nav className={s.nav}>
-            {NAV_ITEMS.map(({ to, label, Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/panel'}
-                className={({ isActive }: { isActive: boolean }) =>
-                  `${s.navItem} ${isActive ? s.navActive : ''}`
-                }
-                onClick={closeMobileNav}
-              >
-                <span className={s.navDot} />
-                <span className={s.navIcon}>
-                  <Icon className={s.navSvg} />
-                </span>
-                <span className={s.navLabel}>{label}</span>
-              </NavLink>
-            ))}
+            <NavItemsList items={visibleAdminNav} closeMobileNav={closeMobileNav} />
+            {canAccessFinance ? (
+              <>
+                <div className={s.navGroupTitle}>Финансы</div>
+                <NavItemsList items={FINANCE_NAV_ITEMS} closeMobileNav={closeMobileNav} />
+              </>
+            ) : null}
           </nav>
 
           {/* Footer */}
@@ -300,18 +360,37 @@ export function Dashboard() {
 
         <div className={s.content}>
           <Routes>
-            <Route index element={<MainPage />} />
+            <Route
+              index
+              element={
+                isFinanceAnalyst ? <Navigate to="/panel/finance/payments" replace /> : <MainPage />
+              }
+            />
             <Route path="users" element={<UsersPage />} />
-            <Route path="referral-create" element={<ReferralCreatePage />} />
-            <Route path="docs" element={<DocsPage />} />
-            <Route path="server" element={<ServerPage />} />
-            <Route path="rules" element={<RulesPage />} />
-            <Route path="referral-stats" element={<ReferralStatsPage />} />
-            <Route path="data-links" element={<DataLinksPage />} />
-            <Route path="reviews" element={<ReviewsPage />} />
+            {canManageUsers ? (
+              <>
+                <Route path="referral-create" element={<ReferralCreatePage />} />
+                <Route path="docs" element={<DocsPage />} />
+                <Route path="server" element={<ServerPage />} />
+                <Route path="rules" element={<RulesPage />} />
+                <Route path="referral-stats" element={<ReferralStatsPage />} />
+                <Route path="data-links" element={<DataLinksPage />} />
+                <Route path="reviews" element={<ReviewsPage />} />
+              </>
+            ) : null}
+            {canAccessFinance ? (
+              <>
+                <Route path="finance/payments" element={<FinancePaymentsPage />} />
+                <Route path="finance/ai-costs" element={<FinanceAiCostsPage />} />
+                <Route path="finance/audience" element={<FinanceAudiencePage />} />
+                <Route path="finance/notes" element={<FinanceNotesPage />} />
+                <Route path="finance/reports" element={<FinanceReportsPage />} />
+              </>
+            ) : null}
           </Routes>
         </div>
       </main>
     </div>
   );
 }
+
