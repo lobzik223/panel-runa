@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import styles from '../Section.module.css';
+import fc from './Finance.module.css';
 import { FinancePeriodToolbar } from './FinancePeriodToolbar';
 import {
+  downloadFinanceReport,
   fetchFinanceReports,
   generateFinanceReport,
   type FinancePeriod,
 } from '@/lib/financeApi';
-import { adminRequest } from '@/lib/adminApi';
 
 export function FinanceReportsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
   const [period, setPeriod] = useState<FinancePeriod>('month');
   const [reports, setReports] = useState<Awaited<ReturnType<typeof fetchFinanceReports>>['reports']>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -48,12 +51,11 @@ export function FinanceReportsPage() {
     }
   };
 
-  const handleDownload = async (path: string, id: string) => {
+  const handleDownload = async (id: string) => {
+    setDownloadingId(id);
+    setError(null);
     try {
-      const apiPath = path.startsWith('http') ? path : `/admin/finance/reports/${id}/download`;
-      const res = await adminRequest(apiPath);
-      if (!res.ok) throw new Error(`Ошибка ${res.status}`);
-      const blob = await res.blob();
+      const blob = await downloadFinanceReport(id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -62,6 +64,8 @@ export function FinanceReportsPage() {
       URL.revokeObjectURL(url);
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -69,18 +73,26 @@ export function FinanceReportsPage() {
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>PDF-отчёты</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Сводка по выручке, ИИ, аудитории и отмеченным заметкам. Не более 10 генераций в час на аккаунт.
+        Сводка по выручке, ИИ, аудитории и заметкам с флагом «в отчёт». Не более 10 генераций в час на аккаунт.
       </p>
 
-      <FinancePeriodToolbar period={period} onChange={setPeriod} />
-
-      <div style={{ marginBottom: 24 }}>
-        <button type="button" disabled={generating} onClick={() => void handleGenerate()}>
+      <div className={`${fc.toolbar} ${isDark ? fc.toolbarDark : ''}`}>
+        <FinancePeriodToolbar period={period} onChange={setPeriod} />
+        <button
+          type="button"
+          className={fc.primaryBtn}
+          disabled={generating}
+          onClick={() => void handleGenerate()}
+        >
           {generating ? 'Генерация…' : 'Сгенерировать PDF'}
         </button>
       </div>
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? (
+        <p className={`${fc.alertError} ${isDark ? fc.alertErrorDark : ''}`} role="alert">
+          {error}
+        </p>
+      ) : null}
 
       <div className={`${styles.tableWrap} ${isDark ? styles.tableWrapDark : ''}`}>
         <table className={styles.table}>
@@ -107,15 +119,20 @@ export function FinanceReportsPage() {
                   </td>
                   <td>{r.authorName}</td>
                   <td>
-                    <button type="button" onClick={() => void handleDownload(r.downloadUrl, r.id)}>
-                      Скачать
+                    <button
+                      type="button"
+                      className={fc.linkBtn}
+                      disabled={downloadingId === r.id}
+                      onClick={() => void handleDownload(r.id)}
+                    >
+                      {downloadingId === r.id ? 'Скачивание…' : 'Скачать'}
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={4}>Отчётов пока нет</td>
+                <td colSpan={4}>Отчётов пока нет — нажмите «Сгенерировать PDF»</td>
               </tr>
             )}
           </tbody>

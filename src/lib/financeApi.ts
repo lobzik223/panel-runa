@@ -182,14 +182,29 @@ export async function fetchFinanceReports() {
       periodTo: string;
       authorName: string;
       createdAt: string;
-      downloadUrl: string;
     }>;
   }>('/admin/finance/reports');
 }
 
+export async function downloadFinanceReport(id: string): Promise<Blob> {
+  const res = await adminRequest(`/admin/finance/reports/${encodeURIComponent(id)}/download`);
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = `Ошибка ${res.status}`;
+    try {
+      const j = JSON.parse(text) as { error?: string };
+      if (j.error) msg = j.error;
+    } catch {
+      if (text) msg = text.slice(0, 200);
+    }
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 export async function generateFinanceReport(period: FinancePeriod) {
   return adminJson<{
-    report: { id: string; periodFrom: string; periodTo: string; downloadUrl: string };
+    report: { id: string; periodFrom: string; periodTo: string };
   }>('/admin/finance/reports/generate', {
     method: 'POST',
     body: JSON.stringify({ period }),
@@ -201,12 +216,16 @@ export async function fetchUserFinanceSummary(userId: string, period: FinancePer
     finance: {
       purchaseCount: number;
       totalSpentRub: number;
+      sitePaymentsCount: number;
+      storePaymentsCount: number;
       payments: Array<{
+        source: 'yookassa' | 'store';
         paymentId: string;
         planName: string;
         appliedTier: string;
         appliedAt: string;
         amountRub: number;
+        platform?: string;
       }>;
     };
     aiUsage: {

@@ -14,6 +14,7 @@ import {
   postClearUserDeviceBindings,
 } from '@/lib/adminApi';
 import { fetchUserFinanceSummary, formatRub, formatTokens } from '@/lib/financeApi';
+import fc from './finance/Finance.module.css';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
 const PLAN_OPTIONS: { value: 'free' | 'lite' | 'pro' | 'business'; label: string }[] = [
@@ -124,6 +125,7 @@ export function UsersPage() {
 
   const [activeTab, setActiveTab] = useState<'info' | 'purchases' | 'finance' | 'actions'>('info');
   const [financeSummary, setFinanceSummary] = useState<Awaited<ReturnType<typeof fetchUserFinanceSummary>> | null>(null);
+  const [financeError, setFinanceError] = useState<string | null>(null);
   const [financeLoading, setFinanceLoading] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
   const [banReason, setBanReason] = useState(BAN_REASONS[0]);
@@ -178,6 +180,7 @@ export function UsersPage() {
     setYookassaSitePayments([]);
     setActiveTab('info');
     setFinanceSummary(null);
+    setFinanceError(null);
     setDetailError(null);
     setActionError(null);
     setSelectedPlan(normalizePlanPick(u.subscriptionTier));
@@ -199,12 +202,16 @@ export function UsersPage() {
     if (activeTab !== 'finance' || !selectedId) return;
     let cancelled = false;
     setFinanceLoading(true);
+    setFinanceError(null);
     void (async () => {
       try {
         const data = await fetchUserFinanceSummary(selectedId, 'month');
         if (!cancelled) setFinanceSummary(data);
       } catch (e) {
-        if (!cancelled) setActionError((e as Error).message);
+        if (!cancelled) {
+          setFinanceSummary(null);
+          setFinanceError((e as Error).message);
+        }
       } finally {
         if (!cancelled) setFinanceLoading(false);
       }
@@ -220,6 +227,7 @@ export function UsersPage() {
     setEntitlements([]);
     setYookassaSitePayments([]);
     setFinanceSummary(null);
+    setFinanceError(null);
     setShowBanModal(false);
     setShowPlanModal(false);
     setDetailError(null);
@@ -732,76 +740,110 @@ export function UsersPage() {
 
             {activeTab === 'finance' && selectedUser && (
               <div className={s.tabContent}>
+                {financeError ? (
+                  <p className={`${fc.alertError} ${isDark ? fc.alertErrorDark : ''}`} role="alert">
+                    {financeError}
+                  </p>
+                ) : null}
                 {financeLoading ? (
                   <p className={`${s.purchasesHint}${dk}`}>Загрузка финансов…</p>
                 ) : financeSummary ? (
-                  <div className={s.infoGrid}>
-                    <InfoField
-                      label="Текущий тариф"
-                      value={tierLabel(selectedUser.subscriptionTier)}
-                      dk={dk}
-                      accent
-                    />
-                    <InfoField
-                      label="Следующее списание / оплата до"
-                      value={formatDateRu(selectedUser.paidSubscriptionExpiresAt)}
-                      dk={dk}
-                    />
-                    <InfoField
-                      label="Покупок подписки"
-                      value={String(financeSummary.finance.purchaseCount)}
-                      dk={dk}
-                    />
-                    <InfoField
-                      label="Всего потрачено"
-                      value={formatRub(financeSummary.finance.totalSpentRub)}
-                      dk={dk}
-                      accent
-                    />
-                    <InfoField
-                      label="Токены текста (всё время / месяц)"
-                      value={`${formatTokens(financeSummary.aiUsage.textGeneration.allTime)} / ${formatTokens(financeSummary.aiUsage.textGeneration.period)}`}
-                      dk={dk}
-                    />
-                    <InfoField
-                      label="Анализ фото"
-                      value={`${formatTokens(financeSummary.aiUsage.imageAnalysis.allTime)} / ${formatTokens(financeSummary.aiUsage.imageAnalysis.period)}`}
-                      dk={dk}
-                    />
-                    <InfoField
-                      label="Генерация слайдов"
-                      value={`${formatTokens(financeSummary.aiUsage.slideGeneration.allTime)} / ${formatTokens(financeSummary.aiUsage.slideGeneration.period)}`}
-                      dk={dk}
-                    />
-                    <InfoField
-                      label="PDF"
-                      value={`${formatTokens(financeSummary.aiUsage.pdfGeneration.allTime)} / ${formatTokens(financeSummary.aiUsage.pdfGeneration.period)}`}
-                      dk={dk}
-                    />
-                  </div>
-                ) : (
-                  <p className={`${s.emptyMsg}${dk}`}>Нет данных</p>
-                )}
-                {financeSummary?.finance.payments.length ? (
                   <>
-                    <p className={`${s.purchasesHint} ${s.purchasesBlockSpacer}${dk}`}>История ЮKassa</p>
-                    <div className={s.purchasesList}>
-                      {financeSummary.finance.payments.map((p) => (
-                        <div key={p.paymentId} className={`${s.purchaseCard}${dk}`}>
-                          <div className={s.purchaseLeft}>
-                            <span className={`${s.purchasePlan}${dk}`}>{p.planName}</span>
-                            <span className={`${s.purchaseDate}${dk}`}>
-                              {formatDateTimeRu(p.appliedAt)} · {p.paymentId}
-                            </span>
-                          </div>
-                          <div className={s.purchaseRight}>
-                            <span className={`${s.purchaseDate}${dk}`}>{formatRub(p.amountRub)}</span>
+                    <div className={fc.financeSection}>
+                      <h4 className={fc.financeSectionTitle}>Подписка и оплаты</h4>
+                      {financeSummary.finance.totalSpentRub === 0 &&
+                      financeSummary.finance.purchaseCount === 0 ? (
+                        <p className={`${fc.financeHint} ${isDark ? fc.financeHintDark : ''}`}>
+                          В базе нет записей об оплате (ЮKassa и магазины). Если тариф платный — возможно,
+                          подписка выдана вручную. Подробности — на вкладке «Покупки».
+                        </p>
+                      ) : null}
+                      <div className={fc.financeMetrics}>
+                        <div className={`${fc.financeMetric} ${isDark ? fc.financeMetricDark : ''}`}>
+                          <div className={fc.financeMetricLabel}>Текущий тариф</div>
+                          <div
+                            className={`${fc.financeMetricValue} ${fc.financeMetricValueAccent} ${isDark ? fc.financeMetricValueDark : ''}`}
+                          >
+                            {tierLabel(selectedUser.subscriptionTier)}
                           </div>
                         </div>
-                      ))}
+                        <div className={`${fc.financeMetric} ${isDark ? fc.financeMetricDark : ''}`}>
+                          <div className={fc.financeMetricLabel}>Оплата до</div>
+                          <div className={`${fc.financeMetricValue} ${isDark ? fc.financeMetricValueDark : ''}`}>
+                            {formatDateRu(selectedUser.paidSubscriptionExpiresAt)}
+                          </div>
+                        </div>
+                        <div className={`${fc.financeMetric} ${isDark ? fc.financeMetricDark : ''}`}>
+                          <div className={fc.financeMetricLabel}>Всего потрачено</div>
+                          <div
+                            className={`${fc.financeMetricValue} ${fc.financeMetricValueAccent} ${isDark ? fc.financeMetricValueDark : ''}`}
+                          >
+                            {formatRub(financeSummary.finance.totalSpentRub)}
+                          </div>
+                        </div>
+                        <div className={`${fc.financeMetric} ${isDark ? fc.financeMetricDark : ''}`}>
+                          <div className={fc.financeMetricLabel}>Покупок</div>
+                          <div className={`${fc.financeMetricValue} ${isDark ? fc.financeMetricValueDark : ''}`}>
+                            {financeSummary.finance.purchaseCount}
+                            <span className={fc.financeMetricSub}>
+                              сайт {financeSummary.finance.sitePaymentsCount} · store{' '}
+                              {financeSummary.finance.storePaymentsCount}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+                    <div className={fc.financeSection}>
+                      <h4 className={fc.financeSectionTitle}>Использование ИИ (всё время / месяц)</h4>
+                      <div className={fc.financeMetrics}>
+                        {(
+                          [
+                            ['Текст', financeSummary.aiUsage.textGeneration],
+                            ['Фото', financeSummary.aiUsage.imageAnalysis],
+                            ['Слайды', financeSummary.aiUsage.slideGeneration],
+                            ['PDF', financeSummary.aiUsage.pdfGeneration],
+                          ] as const
+                        ).map(([label, u]) => (
+                          <div key={label} className={`${fc.financeMetric} ${isDark ? fc.financeMetricDark : ''}`}>
+                            <div className={fc.financeMetricLabel}>{label}</div>
+                            <div className={`${fc.financeMetricValue} ${isDark ? fc.financeMetricValueDark : ''}`}>
+                              {formatTokens(u.allTime)} / {formatTokens(u.period)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {financeSummary.finance.payments.length > 0 ? (
+                      <div className={fc.financeSection}>
+                        <h4 className={fc.financeSectionTitle}>История покупок</h4>
+                        <div className={s.purchasesList}>
+                          {financeSummary.finance.payments.map((p) => (
+                            <div key={`${p.source}-${p.paymentId}`} className={`${s.purchaseCard}${dk}`}>
+                              <div className={s.purchaseLeft}>
+                                <span className={`${s.purchasePlan}${dk}`}>
+                                  {p.planName}
+                                  <span className={fc.paymentSource}>
+                                    {' '}
+                                    · {p.source === 'yookassa' ? 'ЮKassa' : p.platform ?? 'Store'}
+                                  </span>
+                                </span>
+                                <span className={`${s.purchaseDate}${dk}`}>
+                                  {formatDateTimeRu(p.appliedAt)}
+                                  {p.source === 'yookassa' ? ` · ${p.paymentId.slice(0, 14)}…` : ''}
+                                </span>
+                              </div>
+                              <div className={s.purchaseRight}>
+                                <span className={`${s.purchasePrice}${dk}`}>{formatRub(p.amountRub)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </>
-                ) : null}
+                ) : financeError ? null : (
+                  <p className={`${s.emptyMsg}${dk}`}>Не удалось загрузить финансовые данные</p>
+                )}
               </div>
             )}
 

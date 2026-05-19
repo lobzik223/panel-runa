@@ -438,10 +438,17 @@ export type AdminYookassaSitePaymentDto = {
   appliedAt: string;
 };
 
-export async function adminRequest(path: string, init?: RequestInit): Promise<Response> {
+function resolveAdminUrl(path: string): string {
+  const p = path.trim();
+  if (/^https?:\/\//i.test(p)) return p;
+  const rel = p.startsWith('/') ? p : `/${p}`;
   const base = getApiBase();
+  return base ? `${base}${rel}` : rel;
+}
+
+export async function adminRequest(path: string, init?: RequestInit): Promise<Response> {
   const auth = getAdminAuthHeaders();
-  const url = base ? `${base}${path}` : path;
+  const url = resolveAdminUrl(path);
   try {
     return await fetch(url, {
       ...init,
