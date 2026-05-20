@@ -13,7 +13,7 @@ import {
   postAppReviewExpiredDemo,
   postClearUserDeviceBindings,
 } from '@/lib/adminApi';
-import { fetchUserFinanceSummary, formatRub, formatTokens } from '@/lib/financeApi';
+import { fetchUserFinanceSummary, formatRub, formatUsagePair } from '@/lib/financeApi';
 import fc from './finance/Finance.module.css';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
@@ -794,20 +794,26 @@ export function UsersPage() {
                       </div>
                     </div>
                     <div className={fc.financeSection}>
-                      <h4 className={fc.financeSectionTitle}>Использование ИИ (всё время / месяц)</h4>
+                      <h4 className={fc.financeSectionTitle}>
+                        Использование за период (лимит тарифа {tierLabel(financeSummary.usage.tier)})
+                      </h4>
                       <div className={fc.financeMetrics}>
                         {(
                           [
-                            ['Текст', financeSummary.aiUsage.textGeneration],
-                            ['Фото', financeSummary.aiUsage.imageAnalysis],
-                            ['Слайды', financeSummary.aiUsage.slideGeneration],
-                            ['PDF', financeSummary.aiUsage.pdfGeneration],
+                            ['Текст (токены)', financeSummary.usage.text],
+                            ['Анализ фото', financeSummary.usage.image],
+                            ['Презентации (слайды)', financeSummary.usage.slides],
+                            ['PDF (документы)', financeSummary.usage.pdf],
                           ] as const
                         ).map(([label, u]) => (
                           <div key={label} className={`${fc.financeMetric} ${isDark ? fc.financeMetricDark : ''}`}>
                             <div className={fc.financeMetricLabel}>{label}</div>
                             <div className={`${fc.financeMetricValue} ${isDark ? fc.financeMetricValueDark : ''}`}>
-                              {formatTokens(u.allTime)} / {formatTokens(u.period)}
+                              {formatUsagePair(u, 'period')}
+                            </div>
+                            <div className={fc.financeMetricSub}>
+                              всего: {formatUsagePair(u, 'allTime')}
+                              {u.unit === 'count' ? ' шт.' : ''}
                             </div>
                           </div>
                         ))}

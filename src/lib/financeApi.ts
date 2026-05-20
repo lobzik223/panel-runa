@@ -228,11 +228,31 @@ export async function fetchUserFinanceSummary(userId: string, period: FinancePer
         platform?: string;
       }>;
     };
-    aiUsage: {
-      textGeneration: { allTime: number; period: number };
-      imageAnalysis: { allTime: number; period: number };
-      slideGeneration: { allTime: number; period: number };
-      pdfGeneration: { allTime: number; period: number };
+    usage: {
+      tier: string;
+      limits: {
+        chatTokensPeriod: number;
+        imageAnalysesPeriod: number;
+        slidesPeriod: number;
+        pdfPeriod: number;
+      };
+      text: { usedPeriod: number; usedAllTime: number; limitPeriod: number; unit: 'tokens' | 'count' };
+      image: { usedPeriod: number; usedAllTime: number; limitPeriod: number; unit: 'tokens' | 'count' };
+      slides: { usedPeriod: number; usedAllTime: number; limitPeriod: number; unit: 'tokens' | 'count' };
+      pdf: { usedPeriod: number; usedAllTime: number; limitPeriod: number; unit: 'tokens' | 'count' };
     };
   }>(`/admin/finance/users/${encodeURIComponent(userId)}/summary?${qsPeriod(period)}`);
+}
+
+export function formatUsagePair(
+  m: { usedPeriod: number; usedAllTime: number; limitPeriod: number; unit: 'tokens' | 'count' },
+  mode: 'period' | 'allTime' = 'period'
+): string {
+  const used = mode === 'period' ? m.usedPeriod : m.usedAllTime;
+  if (m.unit === 'tokens') {
+    const limit = formatTokens(m.limitPeriod);
+    return mode === 'period' ? `${formatTokens(used)} / ${limit}` : formatTokens(used);
+  }
+  const limit = new Intl.NumberFormat('ru-RU').format(m.limitPeriod);
+  return mode === 'period' ? `${used} / ${limit}` : String(used);
 }
