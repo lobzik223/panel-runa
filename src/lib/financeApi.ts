@@ -15,20 +15,69 @@ function qsPeriod(period: FinancePeriod, extra?: Record<string, string>) {
   return q.toString();
 }
 
+export type FinanceTierBreakdownItem = {
+  tier: string;
+  label: string;
+  count: number;
+  revenueRub: number;
+  percentCount: number;
+  percentRevenue: number;
+};
+
+export type FinancePaymentRow = {
+  paymentId: string;
+  createdAt: string;
+  userId: string | null;
+  email: string | null;
+  planName: string | null;
+  tier: string | null;
+  source: 'yookassa' | 'apple_store' | 'google_play' | 'panel_grant';
+  sourceLabelRu: string;
+  amountRub: number;
+  catalogAmountRub: number | null;
+  countsTowardRevenue: boolean;
+  status: string;
+  statusLabelRu: string;
+};
+
+type FinanceStatsBucket = {
+  revenueRub: number;
+  paymentCount: number;
+  panelGrantCount: number;
+  averageCheckRub: number;
+  bySource: {
+    yookassa: number;
+    apple_store: number;
+    google_play: number;
+    panel_grant: number;
+  };
+  byTier: FinanceTierBreakdownItem[];
+};
+
+export async function fetchPaymentSettings() {
+  return adminJson<{ hiddenTiers: string[] }>('/admin/finance/payments/settings');
+}
+
+export async function updatePaymentHiddenTiers(hiddenTiers: string[]) {
+  return adminJson<{ hiddenTiers: string[] }>('/admin/finance/payments/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ hiddenTiers }),
+  });
+}
+
 export async function fetchPaymentStats(period: FinancePeriod = 'month') {
   return adminJson<{
     configured: boolean;
-    day: { revenueRub: number; paymentCount: number; averageCheckRub: number; byTier: Record<string, number> };
-    week: { revenueRub: number; paymentCount: number; averageCheckRub: number; byTier: Record<string, number> };
-    month: { revenueRub: number; paymentCount: number; averageCheckRub: number; byTier: Record<string, number> };
-    selected: {
+    hiddenTiers: string[];
+    day: FinanceStatsBucket;
+    week: FinanceStatsBucket;
+    month: FinanceStatsBucket;
+    selected: FinanceStatsBucket & {
       period: FinancePeriod;
       from: string;
       to: string;
-      revenueRub: number;
-      paymentCount: number;
-      averageCheckRub: number;
-      byTier: Record<string, number>;
+      statusBreakdown?: Record<string, number>;
+      statusBreakdownRu?: Record<string, number>;
     };
   }>(`/admin/finance/payments/stats?${qsPeriod(period)}`);
 }
@@ -48,16 +97,7 @@ export async function fetchPayments(params: {
   return adminJson<{
     total: number;
     configured: boolean;
-    payments: Array<{
-      paymentId: string;
-      createdAt: string;
-      userId: string | null;
-      email: string | null;
-      planName: string | null;
-      tier: string | null;
-      amountRub: number;
-      status: string;
-    }>;
+    payments: FinancePaymentRow[];
   }>(`/admin/finance/payments?${q.toString()}`);
 }
 
@@ -219,12 +259,13 @@ export async function fetchUserFinanceSummary(userId: string, period: FinancePer
       sitePaymentsCount: number;
       storePaymentsCount: number;
       payments: Array<{
-        source: 'yookassa' | 'store';
+        source: 'yookassa' | 'store' | 'panel_grant';
         paymentId: string;
         planName: string;
         appliedTier: string;
         appliedAt: string;
         amountRub: number;
+        catalogAmountRub: number | null;
         platform?: string;
       }>;
     };

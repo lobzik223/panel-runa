@@ -830,7 +830,12 @@ export function UsersPage() {
                                   {p.planName}
                                   <span className={fc.paymentSource}>
                                     {' '}
-                                    · {p.source === 'yookassa' ? 'ЮKassa' : p.platform ?? 'Store'}
+                                    ·{' '}
+                                    {p.source === 'yookassa'
+                                      ? 'ЮKassa'
+                                      : p.source === 'panel_grant'
+                                        ? 'Панель (0 ₽)'
+                                        : p.platform ?? 'Store'}
                                   </span>
                                 </span>
                                 <span className={`${s.purchaseDate}${dk}`}>
@@ -838,8 +843,15 @@ export function UsersPage() {
                                   {p.source === 'yookassa' ? ` · ${p.paymentId.slice(0, 14)}…` : ''}
                                 </span>
                               </div>
-                              <div className={s.purchaseRight}>
-                                <span className={`${s.purchasePrice}${dk}`}>{formatRub(p.amountRub)}</span>
+                              <div className={`${s.purchaseRight} ${s.purchaseRightStack}`}>
+                                <span className={`${s.purchasePrice}${dk}`}>
+                                  {p.source === 'panel_grant' ? '0 ₽' : formatRub(p.amountRub)}
+                                </span>
+                                {p.source === 'panel_grant' && p.catalogAmountRub != null && p.catalogAmountRub > 0 ? (
+                                  <span className={`${s.purchaseCatalog}${dk}`}>
+                                    тариф {formatRub(p.catalogAmountRub)}
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                           ))}

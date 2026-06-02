@@ -230,6 +230,39 @@
   border-color: #374151;
 }
 
+.tierChipHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tierHideBtn {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.tierHideBtn:hover {
+  color: #dc2626;
+}
+
+.tierChipMeta {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.amountZero {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
 /* ─── Notes ─── */
 .noteForm {
   margin-bottom: 24px;
