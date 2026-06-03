@@ -748,6 +748,8 @@ export async function fetchPanelDailyQuotas(): Promise<PanelDailyQuotas> {
   return adminJson('/admin/panel-quotas');
 }
 
+export type SitePlanName = 'Lite' | 'Pro' | 'Business';
+
 export type ReferralPartnerDto = {
   id: string;
   name: string;
@@ -757,6 +759,9 @@ export type ReferralPartnerDto = {
   rewardPercent: number;
   campaign: string;
   status: string;
+  promoCode: string;
+  discountRub: number;
+  appliesToPlans: SitePlanName[];
   accountsAttracted: number;
   createdAt: string;
   updatedAt: string;
@@ -773,6 +778,9 @@ export async function createReferralPartner(body: {
   channelLink?: string;
   rewardPercent?: number;
   campaign?: string;
+  promoCode: string;
+  discountRub: number;
+  appliesToPlans: SitePlanName[];
 }): Promise<{ partner: ReferralPartnerDto }> {
   return adminJson('/admin/referral-partners', {
     method: 'POST',

@@ -234,3 +234,78 @@
 .detailLink { font-size: 14px; font-weight: 600; color: #6366f1; text-decoration: none; }
 .detailLink:hover { text-decoration: underline; }
 .modal.dk .detailLink { color: #818cf8; }
+
+.promoRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.promoRow .input {
+  flex: 1;
+  min-width: 180px;
+}
+.genPromoBtn {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.genPromoBtn:hover { background: #e5e7eb; }
+.genPromoBtn.dk {
+  background: #25252b;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.fieldHint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.fieldHint.dk { color: #6b7280; }
+.planChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.planChip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.planChip.dk {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.planChipOn {
+  border-color: #312e81;
+  background: #eef2ff;
+  color: #312e81;
+  font-weight: 600;
+}
+.planChip.dk.planChipOn {
+  background: #312e81;
+  color: #e0e7ff;
+}
+.promoCodeChip {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #312e81;
+}
+.promoCodeChip.dk { color: #a5b4fc; }
+.plansMini {
+  font-size: 12px;
+  color: #6b7280;
+}
+.plansMini.dk { color: #9ca3af; }

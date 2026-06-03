@@ -8,6 +8,7 @@ import {
   fetchReferralPartners,
   type PanelDailyQuotas,
   type ReferralPartnerDto,
+  type SitePlanName,
 } from '@/lib/adminApi';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import styles from './Section.module.css';
@@ -22,6 +23,23 @@ const SOURCE_LABELS: Record<Source, string> = {
   tiktok: 'TikTok',
   other: 'Другое',
 };
+
+const PLAN_OPTIONS: { id: SitePlanName; label: string; price: number }[] = [
+  { id: 'Lite', label: 'Lite', price: 390 },
+  { id: 'Pro', label: 'Pro', price: 1350 },
+  { id: 'Business', label: 'Business', price: 2300 },
+];
+
+function suggestPromoCode(name: string): string {
+  const base = name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-ZА-Я0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 12);
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `SEEP-${base || 'PARTNER'}-${suffix}`.slice(0, 64);
+}
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Активен',
@@ -63,7 +81,9 @@ export function ReferralCreatePage() {
   const [formEmail, setFormEmail] = useState('');
   const [formSource, setFormSource] = useState<Source>('telegram');
   const [formChannel, setFormChannel] = useState('');
-  const [formRewardPercent, setFormRewardPercent] = useState(15);
+  const [formPromoCode, setFormPromoCode] = useState('');
+  const [formDiscountRub, setFormDiscountRub] = useState(50);
+  const [formPlans, setFormPlans] = useState<SitePlanName[]>(['Lite', 'Pro', 'Business']);
   const [formCampaign, setFormCampaign] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -106,6 +126,7 @@ export function ReferralCreatePage() {
       r.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
       r.email.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
       r.id.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+      (r.promoCode || '').toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
       (SOURCE_LABELS[src] ?? r.source).toLowerCase().includes(searchQuery.trim().toLowerCase());
     const matchSource = sourceFilter === 'all' || r.source === sourceFilter;
     return matchSearch && matchSource;
@@ -116,18 +137,29 @@ export function ReferralCreatePage() {
     setFormError(null);
     setFormSubmitting(true);
     try {
+      if (formPlans.length === 0) {
+        setFormError('Выберите хотя бы один тариф для промокода');
+        setFormSubmitting(false);
+        return;
+      }
       const { partner } = await createReferralPartner({
         name: formName.trim(),
         email: formEmail.trim(),
         source: formSource,
         channelLink: formChannel.trim(),
-        rewardPercent: formRewardPercent,
+        rewardPercent: 0,
         campaign: formCampaign.trim(),
+        promoCode: formPromoCode.trim(),
+        discountRub: formDiscountRub,
+        appliesToPlans: formPlans,
       });
       setPartners((prev) => [partner, ...prev]);
       setFormName('');
       setFormEmail('');
       setFormChannel('');
+      setFormPromoCode('');
+      setFormDiscountRub(50);
+      setFormPlans(['Lite', 'Pro', 'Business']);
       setFormCampaign('');
       void refreshQuotas();
     } catch (err) {
@@ -189,7 +221,8 @@ export function ReferralCreatePage() {
       <div className={`${s.createCard}${dk}`}>
         <h2 className={s.createCardTitle}>Создать реферальный аккаунт</h2>
         <p className={`${s.createCardDesc}${dk}`}>
-          Добавьте нового реферальщика: укажите контакты, источник трафика и условия вознаграждения.
+          Промокод для сайта при оплате: скидка в рублях и тарифы, на которых он действует. По умолчанию — все
+          тарифы.
         </p>
         {formError ? (
           <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`} style={{ color: '#c0392b' }} role="alert">
@@ -202,7 +235,12 @@ export function ReferralCreatePage() {
             <input
               type="text"
               value={formName}
-              onChange={(e) => setFormName(e.target.value)}
+              onChange={(e) => {
+                setFormName(e.target.value);
+                if (!formPromoCode.trim() && e.target.value.trim().length >= 2) {
+                  setFormPromoCode(suggestPromoCode(e.target.value));
+                }
+              }}
               placeholder="Например: Канал про продуктивность"
               className={`${s.input}${dk}`}
               required
@@ -244,15 +282,70 @@ export function ReferralCreatePage() {
             />
           </div>
           <div className={s.formRow}>
-            <label className={s.label}>Процент вознаграждения (%)</label>
+            <label className={s.label}>Промокод (для сайта)</label>
+            <div className={s.promoRow}>
+              <input
+                type="text"
+                value={formPromoCode}
+                onChange={(e) => setFormPromoCode(e.target.value.toUpperCase())}
+                placeholder="SEEP-PARTNER-XXXX"
+                className={`${s.input}${dk}`}
+                required
+                minLength={4}
+              />
+              <button
+                type="button"
+                className={`${s.genPromoBtn}${dk}`}
+                onClick={() => setFormPromoCode(suggestPromoCode(formName || 'partner'))}
+              >
+                Сгенерировать
+              </button>
+            </div>
+          </div>
+          <div className={s.formRow}>
+            <label className={s.label}>Скидка для клиента (₽)</label>
             <input
               type="number"
-              min={1}
-              max={50}
-              value={formRewardPercent}
-              onChange={(e) => setFormRewardPercent(Number(e.target.value))}
+              min={0}
+              max={2300}
+              step={10}
+              value={formDiscountRub}
+              onChange={(e) => setFormDiscountRub(Math.max(0, Number(e.target.value)))}
               className={`${s.input} ${s.inputNarrow}${dk}`}
+              required
             />
+            <p className={`${s.fieldHint}${dk}`}>
+              Вычитается из цены тарифа на сайте (минимум к оплате — 1 ₽).
+            </p>
+          </div>
+          <div className={s.formRow}>
+            <span className={s.label}>Действует на тарифы</span>
+            <div className={s.planChips}>
+              {PLAN_OPTIONS.map((p) => {
+                const on = formPlans.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`${s.planChip} ${on ? s.planChipOn : ''}${dk}`}
+                    onClick={() => {
+                      setFormPlans((prev) =>
+                        on ? prev.filter((x) => x !== p.id) : [...prev, p.id],
+                      );
+                    }}
+                  >
+                    {p.label} ({p.price} ₽)
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className={`${s.planChip} ${formPlans.length === 3 ? s.planChipOn : ''}${dk}`}
+                onClick={() => setFormPlans(['Lite', 'Pro', 'Business'])}
+              >
+                Все тарифы
+              </button>
+            </div>
           </div>
           <div className={s.formRow}>
             <label className={s.label}>Название кампании (необязательно)</label>
@@ -314,8 +407,9 @@ export function ReferralCreatePage() {
               <th>Источник</th>
               <th>Реферальщик</th>
               <th>Канал / ссылка</th>
-              <th>Привлечено</th>
-              <th>%</th>
+              <th>Промокод</th>
+              <th>Скидка</th>
+              <th>Тарифы</th>
               <th>Статус</th>
               <th></th>
             </tr>
@@ -323,13 +417,13 @@ export function ReferralCreatePage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className={s.emptyCell}>
+                <td colSpan={9} className={s.emptyCell}>
                   Загрузка…
                 </td>
               </tr>
             ) : filteredReferrers.length === 0 ? (
               <tr>
-                <td colSpan={8} className={s.emptyCell}>
+                <td colSpan={9} className={s.emptyCell}>
                   {searchQuery.trim() || sourceFilter !== 'all' ? 'Никого не найдено.' : 'Нет записей.'}
                 </td>
               </tr>
@@ -356,10 +450,15 @@ export function ReferralCreatePage() {
                       <span className={`${s.channelLink}${dk}`}>{r.channelLink || '—'}</span>
                     </td>
                     <td>
-                      <strong className={s.attracted}>{r.accountsAttracted}</strong>
+                      <code className={`${s.promoCodeChip}${dk}`}>{r.promoCode || '—'}</code>
                     </td>
                     <td>
-                      <span className={s.percentChip}>{r.rewardPercent}%</span>
+                      <span className={s.percentChip}>−{r.discountRub} ₽</span>
+                    </td>
+                    <td>
+                      <span className={`${s.plansMini}${dk}`}>
+                        {(r.appliesToPlans || []).join(', ') || 'Все'}
+                      </span>
                     </td>
                     <td>
                       <span className={`${s.badge} ${statusClass(r.status)}`}>{statusLabel(r.status)}</span>
@@ -397,14 +496,29 @@ export function ReferralCreatePage() {
               <div className={s.detailGrid}>
                 <DetailRow label="Ссылка на канал" value={selectedReferrer.channelLink || '—'} dk={dk} link={!!selectedReferrer.channelLink} />
                 <DetailRow label="Кампания" value={selectedReferrer.campaign || '—'} dk={dk} />
+                <DetailRow label="Промокод" value={selectedReferrer.promoCode || '—'} dk={dk} />
+                <DetailRow label="Скидка" value={`−${selectedReferrer.discountRub} ₽`} dk={dk} />
+                <DetailRow
+                  label="Тарифы"
+                  value={(selectedReferrer.appliesToPlans || []).join(', ') || 'Все'}
+                  dk={dk}
+                />
                 <DetailRow label="Привлечено аккаунтов" value={String(selectedReferrer.accountsAttracted)} dk={dk} />
-                <DetailRow label="Процент вознаграждения" value={`${selectedReferrer.rewardPercent}%`} dk={dk} />
                 <DetailRow label="Статус" value={statusLabel(selectedReferrer.status)} dk={dk} />
                 <DetailRow label="Дата добавления" value={formatDateTimeRu(selectedReferrer.createdAt)} dk={dk} />
                 <DetailRow label="Обновлено" value={formatDateTimeRu(selectedReferrer.updatedAt)} dk={dk} />
               </div>
-              {canEditReferralPartners ? (
-                <div className={s.formActions} style={{ marginTop: 16 }}>
+              <div className={s.formActions} style={{ marginTop: 16 }}>
+                {selectedReferrer.promoCode ? (
+                  <button
+                    type="button"
+                    className={`${s.genPromoBtn}${dk}`}
+                    onClick={() => void navigator.clipboard.writeText(selectedReferrer.promoCode)}
+                  >
+                    Скопировать промокод
+                  </button>
+                ) : null}
+                {canEditReferralPartners ? (
                   <button
                     type="button"
                     className={s.submitBtn}
@@ -414,8 +528,8 @@ export function ReferralCreatePage() {
                   >
                     {deleteBusy ? 'Удаление…' : 'Удалить запись'}
                   </button>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
