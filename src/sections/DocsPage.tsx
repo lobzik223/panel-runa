@@ -3,6 +3,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import styles from './Section.module.css';
 import s from './UsersPage.module.css';
 import { type AdminUserDto, fetchBlockedUsers, patchAdminUser } from '@/lib/adminApi';
+import { useAdminRole } from '@/hooks/useAdminRole';
 
 function formatDateTimeRu(iso: string | null): string {
   if (!iso) return '—';
@@ -21,6 +22,7 @@ function formatDateTimeRu(iso: string | null): string {
 
 export function DocsPage() {
   const { theme } = useTheme();
+  const { canUnblockUsers } = useAdminRole();
   const isDark = theme === 'dark';
   const dk = isDark ? ' ' + s.dk : '';
 
@@ -65,7 +67,8 @@ export function DocsPage() {
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Заблокированные</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Пользователи с заблокированными квотами. Причина задаётся при блокировке в разделе «Пользователи». После разблокировки аккаунт снова в общем списке.
+        Пользователи с заблокированными квотами. Причина задаётся при блокировке в разделе «Пользователи».
+        {canUnblockUsers ? ' После разблокировки аккаунт снова в общем списке.' : ' Роль «Финансовый аналитик» — только просмотр, без разбана.'}
       </p>
 
       {error ? (
@@ -82,19 +85,19 @@ export function DocsPage() {
               <th>Email</th>
               <th>Причина блокировки</th>
               <th>Обновлено</th>
-              <th></th>
+              {canUnblockUsers ? <th></th> : null}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className={s.emptyCell}>
+                <td colSpan={canUnblockUsers ? 5 : 4} className={s.emptyCell}>
                   Загрузка…
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={5} className={s.emptyCell}>
+                <td colSpan={canUnblockUsers ? 5 : 4} className={s.emptyCell}>
                   Нет заблокированных пользователей.
                 </td>
               </tr>
@@ -116,17 +119,19 @@ export function DocsPage() {
                     <span className={`${s.reasonCell}${dk}`}>{u.adminBlockReason?.trim() || '—'}</span>
                   </td>
                   <td>{formatDateTimeRu(u.updatedAt)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={`${s.actionBtn} ${s.actionBtnGreen}`}
-                      style={{ padding: '8px 14px', fontSize: 13 }}
-                      disabled={busyId === u.id}
-                      onClick={() => void unblock(u.id)}
-                    >
-                      {busyId === u.id ? '…' : 'Разблокировать'}
-                    </button>
-                  </td>
+                  {canUnblockUsers ? (
+                    <td>
+                      <button
+                        type="button"
+                        className={`${s.actionBtn} ${s.actionBtnGreen}`}
+                        style={{ padding: '8px 14px', fontSize: 13 }}
+                        disabled={busyId === u.id}
+                        onClick={() => void unblock(u.id)}
+                      >
+                        {busyId === u.id ? '…' : 'Разблокировать'}
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               ))
             )}

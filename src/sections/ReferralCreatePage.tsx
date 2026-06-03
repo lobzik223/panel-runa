@@ -1,6 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { IconSearch } from '@/components/Icons';
+import {
+  createReferralPartner,
+  deleteReferralPartner,
+  fetchPanelDailyQuotas,
+  fetchReferralPartners,
+  type PanelDailyQuotas,
+  type ReferralPartnerDto,
+} from '@/lib/adminApi';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import styles from './Section.module.css';
 import s from './ReferralCreatePage.module.css';
 
@@ -14,65 +23,140 @@ const SOURCE_LABELS: Record<Source, string> = {
   other: 'Другое',
 };
 
-interface DemoReferrer {
-  id: string;
-  name: string;
-  email: string;
-  source: Source;
-  channelLink: string;
-  accountsAttracted: number;
-  rewardPercent: number;
-  status: 'Активен' | 'Приостановлен' | 'На модерации';
-  createdAt: string;
-  lastActivity: string;
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Активен',
+  paused: 'Приостановлен',
+  moderation: 'На модерации',
+};
+
+function formatDateTimeRu(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-const REFERRERS: DemoReferrer[] = [];
+function statusLabel(status: string): string {
+  return STATUS_LABELS[status] ?? status;
+}
 
 export function ReferralCreatePage() {
   const { theme } = useTheme();
+  const { canEditReferralPartners, isFinanceAnalyst } = useAdminRole();
   const isDark = theme === 'dark';
   const dk = isDark ? ' ' + s.dk : '';
 
+  const [partners, setPartners] = useState<ReferralPartnerDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [quotas, setQuotas] = useState<PanelDailyQuotas | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<Source | 'all'>('all');
-  const [selectedReferrer, setSelectedReferrer] = useState<DemoReferrer | null>(null);
+  const [selectedReferrer, setSelectedReferrer] = useState<ReferralPartnerDto | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  /* Form: create referral account */
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formSource, setFormSource] = useState<Source>('telegram');
   const [formChannel, setFormChannel] = useState('');
   const [formRewardPercent, setFormRewardPercent] = useState(15);
   const [formCampaign, setFormCampaign] = useState('');
-  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const filteredReferrers = REFERRERS.filter((r) => {
+  const loadPartners = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { partners: list } = await fetchReferralPartners();
+      setPartners(list);
+    } catch (e) {
+      setError((e as Error).message);
+      setPartners([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refreshQuotas = useCallback(async () => {
+    if (!isFinanceAnalyst) return;
+    try {
+      setQuotas(await fetchPanelDailyQuotas());
+    } catch {
+      setQuotas(null);
+    }
+  }, [isFinanceAnalyst]);
+
+  useEffect(() => {
+    void loadPartners();
+  }, [loadPartners]);
+
+  useEffect(() => {
+    void refreshQuotas();
+  }, [refreshQuotas, partners.length]);
+
+  const filteredReferrers = partners.filter((r) => {
+    const src = r.source as Source;
     const matchSearch =
       !searchQuery.trim() ||
       r.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
       r.email.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
       r.id.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
-      SOURCE_LABELS[r.source].toLowerCase().includes(searchQuery.trim().toLowerCase());
+      (SOURCE_LABELS[src] ?? r.source).toLowerCase().includes(searchQuery.trim().toLowerCase());
     const matchSource = sourceFilter === 'all' || r.source === sourceFilter;
     return matchSearch && matchSource;
   });
 
-  const handleCreateAccount = (e: React.FormEvent) => {
+  const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => {
+    setFormError(null);
+    setFormSubmitting(true);
+    try {
+      const { partner } = await createReferralPartner({
+        name: formName.trim(),
+        email: formEmail.trim(),
+        source: formSource,
+        channelLink: formChannel.trim(),
+        rewardPercent: formRewardPercent,
+        campaign: formCampaign.trim(),
+      });
+      setPartners((prev) => [partner, ...prev]);
       setFormName('');
       setFormEmail('');
       setFormChannel('');
       setFormCampaign('');
-      setFormSubmitted(false);
-    }, 1500);
+      void refreshQuotas();
+    } catch (err) {
+      setFormError((err as Error).message);
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Удалить эту реферальную запись?')) return;
+    setDeleteBusy(true);
+    setError(null);
+    try {
+      await deleteReferralPartner(id);
+      setPartners((prev) => prev.filter((p) => p.id !== id));
+      setSelectedReferrer(null);
+      void refreshQuotas();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   const statusClass = (st: string) => {
-    if (st === 'Активен') return s.badgeGreen;
-    if (st === 'Приостановлен') return s.badgeRed;
+    const label = statusLabel(st);
+    if (label === 'Активен') return s.badgeGreen;
+    if (label === 'Приостановлен') return s.badgeRed;
     return s.badgeOrange;
   };
 
@@ -83,20 +167,36 @@ export function ReferralCreatePage() {
     return s.sourceOther;
   };
 
+  const quotaHint =
+    isFinanceAnalyst && quotas?.limits
+      ? ` Лимиты в сутки: создать ${quotas.limits.referralLinkCreate.remaining}/${quotas.limits.referralLinkCreate.limit}, удалить ${quotas.limits.referralLinkDelete.remaining}/${quotas.limits.referralLinkDelete.limit} (пауза ${quotas.limits.referralLinkDelete.cooldownSec} с между удалениями).`
+      : '';
+
   return (
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Реферальная система</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Создание аккаунтов реферальщиков и просмотр по источникам: YouTube, Telegram, TikTok и другие.
+        Создание записей реферальщиков и просмотр по источникам: YouTube, Telegram, TikTok и другие.
+        {quotaHint}
       </p>
 
-      {/* ═══ CREATE REFERRAL ACCOUNT CARD ═══ */}
+      {error ? (
+        <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`} style={{ color: '#c0392b' }} role="alert">
+          {error}
+        </p>
+      ) : null}
+
       <div className={`${s.createCard}${dk}`}>
         <h2 className={s.createCardTitle}>Создать реферальный аккаунт</h2>
         <p className={`${s.createCardDesc}${dk}`}>
           Добавьте нового реферальщика: укажите контакты, источник трафика и условия вознаграждения.
         </p>
-        <form onSubmit={handleCreateAccount} className={s.form}>
+        {formError ? (
+          <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`} style={{ color: '#c0392b' }} role="alert">
+            {formError}
+          </p>
+        ) : null}
+        <form onSubmit={(e) => void handleCreateAccount(e)} className={s.form}>
           <div className={s.formRow}>
             <label className={s.label}>Имя / название канала</label>
             <input
@@ -127,7 +227,9 @@ export function ReferralCreatePage() {
               className={`${s.select}${dk}`}
             >
               {SOURCES.map((src) => (
-                <option key={src} value={src}>{SOURCE_LABELS[src]}</option>
+                <option key={src} value={src}>
+                  {SOURCE_LABELS[src]}
+                </option>
               ))}
             </select>
           </div>
@@ -163,14 +265,13 @@ export function ReferralCreatePage() {
             />
           </div>
           <div className={s.formActions}>
-            <button type="submit" className={s.submitBtn} disabled={formSubmitted}>
-              {formSubmitted ? 'Создаём…' : 'Создать реферальный аккаунт'}
+            <button type="submit" className={s.submitBtn} disabled={formSubmitting}>
+              {formSubmitting ? 'Создаём…' : 'Создать реферальный аккаунт'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* ═══ REFERRERS LIST ═══ */}
       <h2 className={`${s.sectionTitle} ${isDark ? styles.titleDark : ''}`}>Все реферальщики</h2>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
         Поиск и фильтр по источнику. Нажмите на строку для деталей.
@@ -201,7 +302,7 @@ export function ReferralCreatePage() {
           ))}
         </div>
         <span className={`${s.count}${dk}`}>
-          {REFERRERS.length > 0 ? `${filteredReferrers.length} из ${REFERRERS.length}` : '0'}
+          {loading ? '…' : `${filteredReferrers.length} из ${partners.length}`}
         </span>
       </div>
 
@@ -220,59 +321,101 @@ export function ReferralCreatePage() {
             </tr>
           </thead>
           <tbody>
-            {filteredReferrers.length === 0 ? (
+            {loading ? (
               <tr>
                 <td colSpan={8} className={s.emptyCell}>
-                  {searchQuery.trim() || sourceFilter !== 'all' ? 'Никого не найдено.' : 'Нет данных.'}
+                  Загрузка…
+                </td>
+              </tr>
+            ) : filteredReferrers.length === 0 ? (
+              <tr>
+                <td colSpan={8} className={s.emptyCell}>
+                  {searchQuery.trim() || sourceFilter !== 'all' ? 'Никого не найдено.' : 'Нет записей.'}
                 </td>
               </tr>
             ) : (
-              filteredReferrers.map((r) => (
-                <tr key={r.id} className={s.rowClick} onClick={() => setSelectedReferrer(r)}>
-                  <td><span className={`${s.idChip}${dk}`}>{r.id}</span></td>
-                  <td><span className={`${s.sourceBadge} ${sourceBadgeClass(r.source)}`}>{SOURCE_LABELS[r.source]}</span></td>
-                  <td>
-                    <div>
-                      <div className={`${s.refName}${dk}`}>{r.name}</div>
-                      <div className={`${s.refEmail}${dk}`}>{r.email}</div>
-                    </div>
-                  </td>
-                  <td><span className={`${s.channelLink}${dk}`}>{r.channelLink}</span></td>
-                  <td><strong className={s.attracted}>{r.accountsAttracted}</strong></td>
-                  <td><span className={s.percentChip}>{r.rewardPercent}%</span></td>
-                  <td><span className={`${s.badge} ${statusClass(r.status)}`}>{r.status}</span></td>
-                  <td><span className={`${s.arrow}${dk}`}>→</span></td>
-                </tr>
-              ))
+              filteredReferrers.map((r) => {
+                const src = r.source as Source;
+                return (
+                  <tr key={r.id} className={s.rowClick} onClick={() => setSelectedReferrer(r)}>
+                    <td>
+                      <span className={`${s.idChip}${dk}`}>{r.id.slice(0, 8)}…</span>
+                    </td>
+                    <td>
+                      <span className={`${s.sourceBadge} ${sourceBadgeClass(src)}`}>
+                        {SOURCE_LABELS[src] ?? r.source}
+                      </span>
+                    </td>
+                    <td>
+                      <div>
+                        <div className={`${s.refName}${dk}`}>{r.name}</div>
+                        <div className={`${s.refEmail}${dk}`}>{r.email}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`${s.channelLink}${dk}`}>{r.channelLink || '—'}</span>
+                    </td>
+                    <td>
+                      <strong className={s.attracted}>{r.accountsAttracted}</strong>
+                    </td>
+                    <td>
+                      <span className={s.percentChip}>{r.rewardPercent}%</span>
+                    </td>
+                    <td>
+                      <span className={`${s.badge} ${statusClass(r.status)}`}>{statusLabel(r.status)}</span>
+                    </td>
+                    <td>
+                      <span className={`${s.arrow}${dk}`}>→</span>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* ═══ REFERRER DETAIL MODAL ═══ */}
       {selectedReferrer && (
         <div className={s.overlay} onClick={() => setSelectedReferrer(null)}>
           <div className={`${s.modal}${dk}`} onClick={(e) => e.stopPropagation()}>
             <div className={s.modalHeader}>
-              <span className={`${s.sourceBadge} ${sourceBadgeClass(selectedReferrer.source)} ${s.sourceBadgeLg}`}>
-                {SOURCE_LABELS[selectedReferrer.source]}
+              <span
+                className={`${s.sourceBadge} ${sourceBadgeClass(selectedReferrer.source as Source)} ${s.sourceBadgeLg}`}
+              >
+                {SOURCE_LABELS[selectedReferrer.source as Source] ?? selectedReferrer.source}
               </span>
               <div className={s.modalHeaderInfo}>
                 <h3 className={s.modalTitle}>{selectedReferrer.name}</h3>
                 <span className={`${s.modalEmail}${dk}`}>{selectedReferrer.email}</span>
                 <span className={`${s.modalId}${dk}`}>{selectedReferrer.id}</span>
               </div>
-              <button type="button" className={`${s.closeBtn}${dk}`} onClick={() => setSelectedReferrer(null)}>✕</button>
+              <button type="button" className={`${s.closeBtn}${dk}`} onClick={() => setSelectedReferrer(null)}>
+                ✕
+              </button>
             </div>
             <div className={s.modalBody}>
               <div className={s.detailGrid}>
-                <DetailRow label="Ссылка на канал" value={selectedReferrer.channelLink} dk={dk} link />
+                <DetailRow label="Ссылка на канал" value={selectedReferrer.channelLink || '—'} dk={dk} link={!!selectedReferrer.channelLink} />
+                <DetailRow label="Кампания" value={selectedReferrer.campaign || '—'} dk={dk} />
                 <DetailRow label="Привлечено аккаунтов" value={String(selectedReferrer.accountsAttracted)} dk={dk} />
                 <DetailRow label="Процент вознаграждения" value={`${selectedReferrer.rewardPercent}%`} dk={dk} />
-                <DetailRow label="Статус" value={selectedReferrer.status} dk={dk} />
-                <DetailRow label="Дата добавления" value={selectedReferrer.createdAt} dk={dk} />
-                <DetailRow label="Последняя активность" value={selectedReferrer.lastActivity} dk={dk} />
+                <DetailRow label="Статус" value={statusLabel(selectedReferrer.status)} dk={dk} />
+                <DetailRow label="Дата добавления" value={formatDateTimeRu(selectedReferrer.createdAt)} dk={dk} />
+                <DetailRow label="Обновлено" value={formatDateTimeRu(selectedReferrer.updatedAt)} dk={dk} />
               </div>
+              {canEditReferralPartners ? (
+                <div className={s.formActions} style={{ marginTop: 16 }}>
+                  <button
+                    type="button"
+                    className={s.submitBtn}
+                    style={{ background: 'var(--danger, #c0392b)' }}
+                    disabled={deleteBusy}
+                    onClick={() => void handleDelete(selectedReferrer.id)}
+                  >
+                    {deleteBusy ? 'Удаление…' : 'Удалить запись'}
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -280,16 +423,29 @@ export function ReferralCreatePage() {
     </section>
   );
 }
-function DetailRow({ label, value, dk, link }: { label: string; value: string; dk: string; link?: boolean }) {
+
+function DetailRow({
+  label,
+  value,
+  dk,
+  link,
+}: {
+  label: string;
+  value: string;
+  dk: string;
+  link?: boolean;
+}) {
+  const href = value.startsWith('http') ? value : `https://${value}`;
   return (
     <div className={`${s.detailRow}${dk}`}>
       <span className={s.detailLabel}>{label}</span>
-      {link ? (
-        <a href={`https://${value}`} target="_blank" rel="noopener noreferrer" className={`${s.detailLink}${dk}`}>{value}</a>
+      {link && value !== '—' ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={`${s.detailLink}${dk}`}>
+          {value}
+        </a>
       ) : (
         <span className={s.detailValue}>{value}</span>
       )}
     </div>
   );
 }
-

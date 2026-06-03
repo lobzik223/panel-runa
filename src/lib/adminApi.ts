@@ -735,6 +735,135 @@ export async function deleteSiteReview(id: string): Promise<void> {
   throw new Error(errMsg);
 }
 
+export type PanelDailyQuotas = {
+  role: string;
+  limits: {
+    referralLinkCreate: { used: number; limit: number; remaining: number };
+    referralLinkDelete: { used: number; limit: number; remaining: number; cooldownSec: number };
+    dataLinkCreate: { used: number; limit: number; remaining: number };
+  } | null;
+};
+
+export async function fetchPanelDailyQuotas(): Promise<PanelDailyQuotas> {
+  return adminJson('/admin/panel-quotas');
+}
+
+export type ReferralPartnerDto = {
+  id: string;
+  name: string;
+  email: string;
+  source: string;
+  channelLink: string;
+  rewardPercent: number;
+  campaign: string;
+  status: string;
+  accountsAttracted: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function fetchReferralPartners(): Promise<{ partners: ReferralPartnerDto[] }> {
+  return adminJson('/admin/referral-partners');
+}
+
+export async function createReferralPartner(body: {
+  name: string;
+  email: string;
+  source: 'youtube' | 'telegram' | 'tiktok' | 'other';
+  channelLink?: string;
+  rewardPercent?: number;
+  campaign?: string;
+}): Promise<{ partner: ReferralPartnerDto }> {
+  return adminJson('/admin/referral-partners', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteReferralPartner(id: string): Promise<void> {
+  const res = await adminRequest(`/admin/referral-partners/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (res.ok) return;
+  const text = await res.text();
+  let errMsg = `Ошибка ${res.status}`;
+  try {
+    const j = JSON.parse(text) as { error?: string };
+    if (j.error) errMsg = j.error;
+  } catch {
+    if (text) errMsg = text.slice(0, 200);
+  }
+  throw new Error(errMsg);
+}
+
+export async function fetchReferralStats(): Promise<{
+  usersReferred: number;
+  referredWithPaid: number;
+  paymentsRubEstimate: number;
+}> {
+  return adminJson('/admin/referral-stats');
+}
+
+export type PanelAccountDto = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PanelLoginEventDto = {
+  id: string;
+  ip: string;
+  countryCode: string;
+  userAgent: string;
+  loginMethod: string;
+  createdAt: string;
+};
+
+export async function fetchPanelAccounts(): Promise<{
+  accounts: PanelAccountDto[];
+  assignableRoles: string[];
+}> {
+  return adminJson('/admin/panel-accounts');
+}
+
+export async function patchPanelAccountRole(id: string, role: 'admin' | 'finance_analyst'): Promise<void> {
+  await adminJson(`/admin/panel-accounts/${encodeURIComponent(id)}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function deletePanelAccount(id: string): Promise<void> {
+  const res = await adminRequest(`/admin/panel-accounts/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (res.ok || res.status === 204) return;
+  const text = await res.text();
+  let errMsg = `Ошибка ${res.status}`;
+  try {
+    const j = JSON.parse(text) as { error?: string };
+    if (j.error) errMsg = j.error;
+  } catch {
+    if (text) errMsg = text.slice(0, 200);
+  }
+  throw new Error(errMsg);
+}
+
+export async function changePanelPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await adminJson('/admin/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export async function fetchMyPanelLogins(): Promise<{ logins: PanelLoginEventDto[]; limit: number }> {
+  return adminJson('/admin/auth/my-logins');
+}
+
 export async function deleteDataLink(id: string): Promise<void> {
   const res = await adminRequest(`/admin/data-links/${encodeURIComponent(id)}`, {
     method: 'DELETE',

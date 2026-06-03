@@ -10,6 +10,8 @@ import {
 import styles from './Section.module.css';
 import mainStyles from './MainPage.module.css';
 import dataLinksStyles from './DataLinksPage.module.css';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { fetchPanelDailyQuotas, type PanelDailyQuotas } from '@/lib/adminApi';
 
 export type LinkType = 'excel' | 'google-sheets' | 'google-docs';
 
@@ -39,7 +41,9 @@ function dtoToItem(d: DataLinkDto): DataLinkItem {
 
 export function DataLinksPage() {
   const { theme } = useTheme();
+  const { canCreateDataLinks, canEditDataLinks, isFinanceAnalyst } = useAdminRole();
   const isDark = theme === 'dark';
+  const [quotas, setQuotas] = useState<PanelDailyQuotas | null>(null);
 
   const [links, setLinks] = useState<DataLinkItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +74,11 @@ export function DataLinksPage() {
   useEffect(() => {
     void loadLinks();
   }, [loadLinks]);
+
+  useEffect(() => {
+    if (!isFinanceAnalyst) return;
+    void fetchPanelDailyQuotas().then(setQuotas).catch(() => setQuotas(null));
+  }, [isFinanceAnalyst, links.length]);
 
   const handleAdd = async () => {
     if (!newName.trim() || !newUrl.trim()) return;
@@ -119,7 +128,10 @@ export function DataLinksPage() {
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Графики и данные</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Ссылки на Excel и Google Таблицы/Документы. Укажите название и за что отвечает каждая ссылка — администратор может открыть и проверить все данные из панели.
+        Ссылки на Excel и Google Таблицы/Документы. Укажите название и за что отвечает каждая ссылка.
+        {isFinanceAnalyst && quotas?.limits
+          ? ` Лимит: ${quotas.limits.dataLinkCreate.remaining} из ${quotas.limits.dataLinkCreate.limit} новых графиков в сутки.`
+          : ''}
       </p>
 
       {error ? (
@@ -190,14 +202,16 @@ export function DataLinksPage() {
                   <IconExternal className={dataLinksStyles.openBtnIcon} />
                   Открыть
                 </a>
-                <button
-                  type="button"
-                  className={dataLinksStyles.removeBtn}
-                  onClick={() => handleRemove(item.id)}
-                  aria-label="Удалить ссылку"
-                >
-                  Удалить
-                </button>
+                {canEditDataLinks ? (
+                  <button
+                    type="button"
+                    className={dataLinksStyles.removeBtn}
+                    onClick={() => handleRemove(item.id)}
+                    aria-label="Удалить ссылку"
+                  >
+                    Удалить
+                  </button>
+                ) : null}
               </div>
             </div>
           ))
@@ -269,7 +283,7 @@ export function DataLinksPage() {
               </button>
             </div>
           </div>
-        ) : (
+        ) : canCreateDataLinks ? (
           <button
             type="button"
             className={dataLinksStyles.addLinkTrigger}
@@ -277,7 +291,7 @@ export function DataLinksPage() {
           >
             + Добавить ссылку
           </button>
-        )}
+        ) : null}
       </div>
     </section>
   );

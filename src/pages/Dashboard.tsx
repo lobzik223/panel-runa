@@ -15,6 +15,8 @@ import {
   IconCpu,
   IconNote,
   IconFilePdf,
+  IconSettings,
+  IconShield,
   IconLogout,
   IconSun,
   IconMoon,
@@ -44,6 +46,8 @@ import { FinanceAiCostsPage } from '@/sections/finance/FinanceAiCostsPage';
 import { FinanceAudiencePage } from '@/sections/finance/FinanceAudiencePage';
 import { FinanceNotesPage } from '@/sections/finance/FinanceNotesPage';
 import { FinanceReportsPage } from '@/sections/finance/FinanceReportsPage';
+import { SettingsPage } from '@/sections/SettingsPage';
+import { PanelRolesPage } from '@/sections/PanelRolesPage';
 import s from './Dashboard.module.css';
 
 const LOGO_SRC = '/seepromnt-logo.png';
@@ -56,7 +60,9 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
   { to: '/panel/docs', label: 'Заблокированные', Icon: IconDocs },
   { to: '/panel/server', label: 'Серверная часть', Icon: IconServer },
+  { to: '/panel/panel-roles', label: 'Роли', Icon: IconShield },
   { to: '/panel/rules', label: 'Правила панели', Icon: IconRules },
+  { to: '/panel/settings', label: 'Настройки', Icon: IconSettings },
   { to: '/panel/referral-stats', label: 'Статистика', Icon: IconStats },
   { to: '/panel/data-links', label: 'Графики и данные', Icon: IconLink },
   { to: '/panel/reviews', label: 'Отзывы сайта', Icon: IconReview },
@@ -101,7 +107,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/panel/referral-create': 'Реферальная система',
   '/panel/docs': 'Заблокированные',
   '/panel/server': 'Серверная часть',
+  '/panel/panel-roles': 'Роли',
   '/panel/rules': 'Правила панели',
+  '/panel/settings': 'Настройки',
   '/panel/referral-stats': 'Статистика',
   '/panel/data-links': 'Графики и данные',
   '/panel/reviews': 'Отзывы сайта',
@@ -148,7 +156,13 @@ function NavItemsList({
 export function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isFinanceAnalyst, canManageUsers, canAccessFinance } = useAdminRole();
+  const {
+    isFinanceAnalyst,
+    canAccessFinance,
+    canViewUsersPanel,
+    canAccessServerPanel,
+    canManagePanelAccounts,
+  } = useAdminRole();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const now = useClock();
@@ -211,19 +225,39 @@ export function Dashboard() {
   const adminRoleLabel = formatAdminRoleRu(getAdminRole());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  const FINANCE_ANALYST_NAV: NavItem[] = [
+    { to: '/panel/users', label: 'Пользователи', Icon: IconUsers },
+    { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
+    { to: '/panel/docs', label: 'Заблокированные', Icon: IconDocs },
+    { to: '/panel/rules', label: 'Правила панели', Icon: IconRules },
+    { to: '/panel/referral-stats', label: 'Статистика', Icon: IconStats },
+    { to: '/panel/data-links', label: 'Графики и данные', Icon: IconLink },
+    { to: '/panel/reviews', label: 'Отзывы сайта', Icon: IconReview },
+    { to: '/panel/settings', label: 'Настройки', Icon: IconSettings },
+  ];
+
   const visibleAdminNav = useMemo(() => {
-    if (isFinanceAnalyst) {
-      return [{ to: '/panel/users', label: 'Пользователи', Icon: IconUsers }];
-    }
-    return ADMIN_NAV_ITEMS;
-  }, [isFinanceAnalyst]);
+    if (isFinanceAnalyst) return FINANCE_ANALYST_NAV;
+    return ADMIN_NAV_ITEMS.filter((item) => {
+      if (item.to === '/panel/server') return canAccessServerPanel;
+      if (item.to === '/panel/panel-roles') return canManagePanelAccounts;
+      return true;
+    });
+  }, [isFinanceAnalyst, canAccessServerPanel, canManagePanelAccounts]);
 
   useEffect(() => {
     if (!isFinanceAnalyst) return;
     const p = location.pathname;
     const allowed =
       p.startsWith('/panel/finance') ||
-      p.startsWith('/panel/users');
+      p === '/panel/users' ||
+      p === '/panel/referral-create' ||
+      p === '/panel/docs' ||
+      p === '/panel/rules' ||
+      p === '/panel/referral-stats' ||
+      p === '/panel/data-links' ||
+      p === '/panel/reviews' ||
+      p === '/panel/settings';
     if (!allowed) {
       navigate('/panel/finance/payments', { replace: true });
     }
@@ -366,18 +400,20 @@ export function Dashboard() {
                 isFinanceAnalyst ? <Navigate to="/panel/finance/payments" replace /> : <MainPage />
               }
             />
-            <Route path="users" element={<UsersPage />} />
-            {canManageUsers ? (
+            {canViewUsersPanel ? <Route path="users" element={<UsersPage />} /> : null}
+            {canViewUsersPanel || isFinanceAnalyst ? (
               <>
                 <Route path="referral-create" element={<ReferralCreatePage />} />
                 <Route path="docs" element={<DocsPage />} />
-                <Route path="server" element={<ServerPage />} />
                 <Route path="rules" element={<RulesPage />} />
                 <Route path="referral-stats" element={<ReferralStatsPage />} />
                 <Route path="data-links" element={<DataLinksPage />} />
                 <Route path="reviews" element={<ReviewsPage />} />
               </>
             ) : null}
+            {canAccessServerPanel ? <Route path="server" element={<ServerPage />} /> : null}
+            {canManagePanelAccounts ? <Route path="panel-roles" element={<PanelRolesPage />} /> : null}
+            <Route path="settings" element={<SettingsPage />} />
             {canAccessFinance ? (
               <>
                 <Route path="finance/payments" element={<FinancePaymentsPage />} />

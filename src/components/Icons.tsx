@@ -248,3 +248,21 @@ export function IconClose({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconSettings({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+
+export function IconShield({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  );
+}

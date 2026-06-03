@@ -7,6 +7,7 @@ import {
   type SiteReviewAdminDto,
   type SiteReviewFilter,
 } from '@/lib/adminApi';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import styles from './Section.module.css';
 import pageStyles from './ReviewsPage.module.css';
 
@@ -18,6 +19,7 @@ const FILTER_TABS: { id: SiteReviewFilter; label: string }[] = [
 
 export function ReviewsPage() {
   const { theme } = useTheme();
+  const { canModerateReviews } = useAdminRole();
   const isDark = theme === 'dark';
 
   const [filter, setFilter] = useState<SiteReviewFilter>('all');
@@ -77,6 +79,7 @@ export function ReviewsPage() {
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
         Демо создаются миграцией бэкенда. Отзывы пользователей приходят с формы «Оставить отзыв» на лендинге. Галочка
         «Показывать на сайте» — публикация в карусели.
+        {!canModerateReviews ? ' Роль «Финансовый аналитик» — только просмотр.' : ''}
       </p>
 
       <div className={pageStyles.tabs}>
@@ -118,25 +121,27 @@ export function ReviewsPage() {
                     <span className={pageStyles.badgeOff}>Скрыт</span>
                   )}
                 </div>
-                <div className={pageStyles.cardActions}>
-                  <label className={pageStyles.checkRow}>
-                    <input
-                      type="checkbox"
-                      checked={r.approved}
-                      disabled={actionId === r.id}
-                      onChange={(e) => void toggleApproved(r.id, e.target.checked)}
-                    />
-                    <span>Показывать на сайте</span>
-                  </label>
-                  <button
-                    type="button"
-                    className={`${pageStyles.deleteBtn} ${isDark ? pageStyles.deleteBtnDark : ''}`}
-                    disabled={deleteId === r.id || actionId === r.id}
-                    onClick={() => void removeReview(r.id)}
-                  >
-                    {deleteId === r.id ? 'Удаление…' : 'Удалить навсегда'}
-                  </button>
-                </div>
+                {canModerateReviews ? (
+                  <div className={pageStyles.cardActions}>
+                    <label className={pageStyles.checkRow}>
+                      <input
+                        type="checkbox"
+                        checked={r.approved}
+                        disabled={actionId === r.id}
+                        onChange={(e) => void toggleApproved(r.id, e.target.checked)}
+                      />
+                      <span>Показывать на сайте</span>
+                    </label>
+                    <button
+                      type="button"
+                      className={`${pageStyles.deleteBtn} ${isDark ? pageStyles.deleteBtnDark : ''}`}
+                      disabled={deleteId === r.id || actionId === r.id}
+                      onClick={() => void removeReview(r.id)}
+                    >
+                      {deleteId === r.id ? 'Удаление…' : 'Удалить навсегда'}
+                    </button>
+                  </div>
+                ) : null}
               </div>
               <p className={pageStyles.body}>&ldquo;{r.body}&rdquo;</p>
               <div className={pageStyles.meta}>

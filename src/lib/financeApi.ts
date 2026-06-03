@@ -214,14 +214,39 @@ export async function deleteFinanceNote(id: string) {
   }
 }
 
+export type FinanceReportSections = {
+  realPayments: boolean;
+  panelGrants: boolean;
+  newUsers: boolean;
+  usersChart: boolean;
+  usersPeriodCompare: boolean;
+  aiCosts: boolean;
+  audience: boolean;
+  notes: boolean;
+};
+
+export const DEFAULT_FINANCE_REPORT_SECTIONS: FinanceReportSections = {
+  realPayments: true,
+  panelGrants: true,
+  newUsers: true,
+  usersChart: true,
+  usersPeriodCompare: false,
+  aiCosts: true,
+  audience: true,
+  notes: true,
+};
+
 export async function fetchFinanceReports() {
   return adminJson<{
+    retentionHours: number;
     reports: Array<{
       id: string;
       periodFrom: string;
       periodTo: string;
       authorName: string;
       createdAt: string;
+      expiresAt: string;
+      expiresInMs: number;
     }>;
   }>('/admin/finance/reports');
 }
@@ -242,13 +267,32 @@ export async function downloadFinanceReport(id: string): Promise<Blob> {
   return res.blob();
 }
 
-export async function generateFinanceReport(period: FinancePeriod) {
+export async function generateFinanceReport(
+  period: FinancePeriod,
+  sections?: Partial<FinanceReportSections>
+) {
   return adminJson<{
     report: { id: string; periodFrom: string; periodTo: string };
   }>('/admin/finance/reports/generate', {
     method: 'POST',
-    body: JSON.stringify({ period }),
+    body: JSON.stringify({ period, sections }),
   });
+}
+
+export async function deleteFinanceReport(id: string): Promise<void> {
+  const res = await adminRequest(`/admin/finance/reports/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (res.ok) return;
+  const text = await res.text();
+  let errMsg = `Ошибка ${res.status}`;
+  try {
+    const j = JSON.parse(text) as { error?: string };
+    if (j.error) errMsg = j.error;
+  } catch {
+    if (text) errMsg = text.slice(0, 200);
+  }
+  throw new Error(errMsg);
 }
 
 export async function fetchUserFinanceSummary(userId: string, period: FinancePeriod = 'month') {
