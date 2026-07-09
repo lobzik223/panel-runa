@@ -266,3 +266,14 @@ export function IconShield({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function IconOrg({ className }: { className?: string }) {
+  return (
+    <svg {...common} className={className} aria-hidden>
+      <path d="M3 21h18" />
+      <path d="M5 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16" />
+      <path d="M15 9h3a1 1 0 0 1 1 1v11" />
+      <path d="M8 8h1M11 8h1M8 12h1M11 12h1M8 16h1M11 16h1" />
+    </svg>
+  );
+}

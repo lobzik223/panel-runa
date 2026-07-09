@@ -872,6 +872,157 @@ export async function fetchMyPanelLogins(): Promise<{ logins: PanelLoginEventDto
   return adminJson('/admin/auth/my-logins');
 }
 
+// ─── Organizations (admin) ─────────────────────────────────
+
+export type AdminOrgDto = {
+  id: string;
+  name: string;
+  planId: string;
+  planLabel: string;
+  seatCount: number;
+  monthlyAmountRub: number;
+  subscriptionStatus: string;
+  subscriptionExpiresAt: string | null;
+  subscriptionActivatedAt: string | null;
+  joinCode: string | null;
+  status: string;
+  createdAt: string;
+  adminUserId: string;
+  adminEmail: string;
+  adminName: string | null;
+  adminPhone: string | null;
+  legalForm: string | null;
+  inn: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  legalAddress: string | null;
+  verificationStatus: string;
+  verifiedAt: string | null;
+  occupiedSeats: number;
+  activeMembers: number;
+  totalMembers: number;
+};
+
+export type OrgVerificationStatus = 'verified' | 'rejected' | 'pending' | 'unverified';
+
+export type AdminOrgMemberDto = {
+  id: string;
+  userId: string | null;
+  role: 'admin' | 'member';
+  seatStatus: string;
+  invitedEmail: string | null;
+  joinedAt: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  subscriptionTier: string | null;
+  paidSubscriptionExpiresAt: string | null;
+};
+
+export type AdminOrgPaymentDto = {
+  id: string;
+  paymentId: string | null;
+  type: string;
+  amountKopecks: number;
+  amountRub: number;
+  seatCountDelta: number;
+  status: string;
+  description: string;
+  receiptUrl: string | null;
+  createdAt: string;
+  paidAt: string | null;
+};
+
+export type AdminOrgResetInfo = {
+  purchasedAt: string | null;
+  resetAllowed: boolean;
+  resetDeadline: string | null;
+  hoursLeft: number | null;
+};
+
+export type AdminOrgDetail = {
+  organization: AdminOrgDto;
+  members: AdminOrgMemberDto[];
+  payments: AdminOrgPaymentDto[];
+  reset: AdminOrgResetInfo;
+};
+
+export type OrgPlanId = 'super' | 'super_plus';
+
+export type OrgPlanDto = { planId: OrgPlanId; label: string; pricePerSeatRub: number };
+
+export async function fetchAdminOrganizations(params: {
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ total: number; organizations: AdminOrgDto[] }> {
+  const qs = new URLSearchParams({
+    q: params.q ?? '',
+    limit: String(params.limit ?? 50),
+    offset: String(params.offset ?? 0),
+  });
+  return adminJson(`/admin/organizations?${qs.toString()}`);
+}
+
+export async function fetchAdminOrganizationDetail(orgId: string): Promise<AdminOrgDetail> {
+  return adminJson(`/admin/organizations/${encodeURIComponent(orgId)}`);
+}
+
+export async function fetchOrgPlans(): Promise<{ plans: OrgPlanDto[] }> {
+  return adminJson('/admin/organizations-meta/plans');
+}
+
+export async function grantOrgTier(
+  orgId: string,
+  body: { planId?: OrgPlanId; days?: number; applyToMembers?: boolean }
+): Promise<{ ok: boolean; membersUpdated: number }> {
+  return adminJson(`/admin/organizations/${encodeURIComponent(orgId)}/grant`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function revokeOrgTier(orgId: string): Promise<{ ok: boolean }> {
+  return adminJson(`/admin/organizations/${encodeURIComponent(orgId)}/revoke`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function grantOrgMemberTier(
+  orgId: string,
+  userId: string,
+  body: { planId?: OrgPlanId; days?: number }
+): Promise<{ ok: boolean; tier: string }> {
+  return adminJson(
+    `/admin/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(userId)}/grant`,
+    { method: 'POST', body: JSON.stringify(body) }
+  );
+}
+
+export async function revokeOrgMemberTier(orgId: string, userId: string): Promise<{ ok: boolean }> {
+  return adminJson(
+    `/admin/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(userId)}/revoke`,
+    { method: 'POST', body: JSON.stringify({}) }
+  );
+}
+
+export async function resetOrgAll(orgId: string): Promise<{ ok: boolean; membersReset: number }> {
+  return adminJson(`/admin/organizations/${encodeURIComponent(orgId)}/reset-all`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function setOrgVerification(
+  orgId: string,
+  status: OrgVerificationStatus
+): Promise<{ ok: boolean; verificationStatus: string }> {
+  return adminJson(`/admin/organizations/${encodeURIComponent(orgId)}/verification`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  });
+}
+
 export async function deleteDataLink(id: string): Promise<void> {
   const res = await adminRequest(`/admin/data-links/${encodeURIComponent(id)}`, {
     method: 'DELETE',

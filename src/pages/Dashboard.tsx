@@ -17,6 +17,7 @@ import {
   IconFilePdf,
   IconSettings,
   IconShield,
+  IconOrg,
   IconLogout,
   IconSun,
   IconMoon,
@@ -25,6 +26,7 @@ import {
 } from '@/components/Icons';
 import { MainPage } from '@/sections/MainPage';
 import { UsersPage } from '@/sections/UsersPage';
+import { OrganizationsPage } from '@/sections/OrganizationsPage';
 import { ReferralCreatePage } from '@/sections/ReferralCreatePage';
 import { DocsPage } from '@/sections/DocsPage';
 import { ServerPage } from '@/sections/ServerPage';
@@ -57,6 +59,7 @@ type NavItem = { to: string; label: string; Icon: React.ComponentType<{ classNam
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { to: '/panel', label: 'Главная', Icon: IconHome },
   { to: '/panel/users', label: 'Пользователи', Icon: IconUsers },
+  { to: '/panel/organizations', label: 'Организации', Icon: IconOrg },
   { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
   { to: '/panel/docs', label: 'Заблокированные', Icon: IconDocs },
   { to: '/panel/server', label: 'Серверная часть', Icon: IconServer },
@@ -104,6 +107,7 @@ function getGreeting(d: Date) {
 const PAGE_TITLES: Record<string, string> = {
   '/panel': 'Обзор',
   '/panel/users': 'Пользователи',
+  '/panel/organizations': 'Организации',
   '/panel/referral-create': 'Реферальная система',
   '/panel/docs': 'Заблокированные',
   '/panel/server': 'Серверная часть',
@@ -401,6 +405,7 @@ export function Dashboard() {
               }
             />
             {canViewUsersPanel ? <Route path="users" element={<UsersPage />} /> : null}
+            {canViewUsersPanel ? <Route path="organizations" element={<OrganizationsPage />} /> : null}
             {canViewUsersPanel || isFinanceAnalyst ? (
               <>
                 <Route path="referral-create" element={<ReferralCreatePage />} />
