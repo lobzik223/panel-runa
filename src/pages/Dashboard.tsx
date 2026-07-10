@@ -231,6 +231,7 @@ export function Dashboard() {
 
   const FINANCE_ANALYST_NAV: NavItem[] = [
     { to: '/panel/users', label: 'Пользователи', Icon: IconUsers },
+    { to: '/panel/organizations', label: 'Организации', Icon: IconOrg },
     { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
     { to: '/panel/docs', label: 'Заблокированные', Icon: IconDocs },
     { to: '/panel/rules', label: 'Правила панели', Icon: IconRules },
@@ -255,6 +256,7 @@ export function Dashboard() {
     const allowed =
       p.startsWith('/panel/finance') ||
       p === '/panel/users' ||
+      p === '/panel/organizations' ||
       p === '/panel/referral-create' ||
       p === '/panel/docs' ||
       p === '/panel/rules' ||
