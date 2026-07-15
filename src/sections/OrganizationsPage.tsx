@@ -19,6 +19,7 @@ import {
   revokeOrgMemberTier,
   resetOrgAll,
   setOrgVerification,
+  renameOrganization,
 } from '@/lib/adminApi';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
@@ -90,6 +91,7 @@ export function OrganizationsPage() {
   const [grantPlan, setGrantPlan] = useState<OrgPlanId>('super');
   const [grantDays, setGrantDays] = useState(30);
   const [grantApplyMembers, setGrantApplyMembers] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(searchQuery.trim()), 350);
@@ -142,6 +144,7 @@ export function OrganizationsPage() {
       const r = await fetchAdminOrganizationDetail(o.id);
       setDetail(r);
       setGrantPlan((r.organization.planId as OrgPlanId) || 'super');
+      setRenameValue(r.organization.name || '');
     } catch (e) {
       setDetailError((e as Error).message);
     } finally {
@@ -159,6 +162,7 @@ export function OrganizationsPage() {
   const refreshDetail = async (orgId: string) => {
     const r = await fetchAdminOrganizationDetail(orgId);
     setDetail(r);
+    setRenameValue(r.organization.name || '');
     await loadList();
   };
 
@@ -507,6 +511,40 @@ export function OrganizationsPage() {
               <div className={s.tabContent}>
                 <div className={s.actionsGrid}>
                   <div className={`${s.actionCard}${dk} ${s.actionCardWide}`}>
+                    <h4 className={s.actionTitle}>Название организации</h4>
+                    <p className={`${s.actionDesc}${dk}`}>
+                      Главный администратор может изменить название организации. Оно сразу обновится
+                      в панели и в кабинете организации.
+                    </p>
+                    <div className={s.actionsRow} style={{ flexWrap: 'wrap', gap: 8 }}>
+                      <input
+                        type="text"
+                        maxLength={255}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        className={`${s.searchInput}${dk}`}
+                        style={{ flex: 1, minWidth: 220 }}
+                        placeholder="Новое название организации"
+                        disabled={actionBusy}
+                      />
+                      <button
+                        type="button"
+                        className={`${s.actionBtn} ${s.actionBtnBlue}`}
+                        disabled={
+                          actionBusy ||
+                          !renameValue.trim() ||
+                          renameValue.trim() === (org.name || '').trim()
+                        }
+                        onClick={() =>
+                          void runAction(() => renameOrganization(selectedId!, renameValue.trim()))
+                        }
+                      >
+                        Сохранить название
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={`${s.actionCard}${dk} ${s.actionCardWide}`}>
                     <h4 className={s.actionTitle}>Подтверждение организации (вручную)</h4>
                     <p className={`${s.actionDesc}${dk}`}>
                       Проверьте введённые клиентом данные (ОПФ, ИНН, адрес) на вкладке «Информация» и
@@ -601,7 +639,12 @@ export function OrganizationsPage() {
                         className={`${s.actionBtn} ${s.actionBtnOrange}`}
                         disabled={actionBusy || org.subscriptionStatus === 'none'}
                         onClick={() => {
-                          if (!window.confirm('Снять организационный тариф? Возврат средств не производится.')) return;
+                          if (
+                            !window.confirm(
+                              'Снять организационный тариф? Индивидуальные тарифы активных участников также будут сняты (лимиты упадут). Возврат средств не производится.',
+                            )
+                          )
+                            return;
                           void runAction(() => revokeOrgTier(selectedId!));
                         }}
                       >

@@ -971,6 +971,16 @@ export async function fetchOrgPlans(): Promise<{ plans: OrgPlanDto[] }> {
   return adminJson('/admin/organizations-meta/plans');
 }
 
+export async function renameOrganization(
+  orgId: string,
+  name: string
+): Promise<{ ok: boolean; name: string }> {
+  return adminJson(`/admin/organizations/${encodeURIComponent(orgId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
 export async function grantOrgTier(
   orgId: string,
   body: { planId?: OrgPlanId; days?: number; applyToMembers?: boolean }
