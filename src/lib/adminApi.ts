@@ -154,10 +154,20 @@ function setAdminSession(data: {
   }
 }
 
+/** Секрет панели — тот же, что ADMIN_PANEL_KEY на бэкенде. */
+function getPanelKeyHeaders(): Record<string, string> {
+  const key = import.meta.env.VITE_ADMIN_PANEL_KEY?.trim();
+  if (!key) {
+    if (import.meta.env.DEV) return {};
+    throw new Error('Задайте VITE_ADMIN_PANEL_KEY в .env панели (тот же, что ADMIN_PANEL_KEY на бэкенде)');
+  }
+  return { 'X-Runa-Panel-Key': key };
+}
+
 function getAuthHeaders(): Record<string, string> {
   const jwt = getAdminToken()?.trim();
   if (!jwt) throw new Error('Нет доступа: войдите по email и паролю.');
-  return { Authorization: `Bearer ${jwt}` };
+  return { Authorization: `Bearer ${jwt}`, ...getPanelKeyHeaders() };
 }
 
 async function parseError(res: Response): Promise<string> {
@@ -190,19 +200,35 @@ export async function adminJson<T>(
   return (await res.json()) as T;
 }
 
-/** Вход без OTP — сразу JWT. */
+/** Вход без OTP — сразу JWT. После 3 ошибок бэкенд блокирует на 5 мин. */
 export async function loginAdmin(email: string, password: string): Promise<void> {
   const res = await fetch(apiUrl('/api/admin/auth/login'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getPanelKeyHeaders() },
     body: JSON.stringify({ email: email.trim(), password }),
   });
   const data = (await res.json().catch(() => ({}))) as {
     accessToken?: string;
     admin?: { id?: number; email?: string; name?: string | null; role?: string };
     message?: string | string[];
+    code?: string;
+    retryAfterSeconds?: number;
   };
   if (!res.ok) {
+    if (data.code === 'ADMIN_PANEL_KEY_INVALID') {
+      throw new Error('Неверный или отсутствующий ключ панели (VITE_ADMIN_PANEL_KEY)');
+    }
+    if (data.code === 'ADMIN_LOGIN_LOCKED' || res.status === 429) {
+      const sec =
+        typeof data.retryAfterSeconds === 'number' && data.retryAfterSeconds > 0
+          ? data.retryAfterSeconds
+          : 300;
+      const mins = Math.floor(sec / 60);
+      const rem = sec % 60;
+      const wait =
+        mins > 0 ? `${mins} мин${rem > 0 ? ` ${rem} с` : ''}` : `${sec} с`;
+      throw new Error(`Слишком много неверных попыток. Повторите через ${wait}.`);
+    }
     const msg = Array.isArray(data.message)
       ? data.message.join('\n')
       : typeof data.message === 'string'

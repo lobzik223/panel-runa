@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   /** Пусто в dev = прокси Vite на :3000. В production: https://api.runa.finance */
   readonly VITE_API_URL?: string;
+  /** Тот же секрет, что ADMIN_PANEL_KEY на backend-runa (заголовок X-Runa-Panel-Key). */
+  readonly VITE_ADMIN_PANEL_KEY?: string;
 }
 
 interface ImportMeta {
