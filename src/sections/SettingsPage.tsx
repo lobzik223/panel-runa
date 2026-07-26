@@ -1,92 +1,47 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
-import {
-  changePanelPassword,
-  fetchAdminProfile,
-  fetchMyPanelLogins,
-  formatAdminRoleRu,
-  type PanelLoginEventDto,
-} from '@/lib/adminApi';
 import styles from './Section.module.css';
-import fc from './finance/Finance.module.css';
-import sp from './SettingsPage.module.css';
-
-function loginMethodRu(m: string): string {
-  if (m === 'trusted') return 'Доверенное устройство';
-  if (m === 'otp') return 'Код из письма';
-  return m;
-}
-
-function shortenUa(ua: string): string {
-  if (ua.length <= 72) return ua || '—';
-  return `${ua.slice(0, 69)}…`;
-}
+import s from './SettingsPage.module.css';
+import { changeAdminPassword, fetchAdminProfile, type AdminProfileDto } from '@/lib/adminApi';
 
 export function SettingsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-
-  const [profileEmail, setProfileEmail] = useState('');
-  const [profileRole, setProfileRole] = useState('');
+  const [profile, setProfile] = useState<AdminProfileDto | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
-  const [passwordErr, setPasswordErr] = useState<string | null>(null);
-
-  const [logins, setLogins] = useState<PanelLoginEventDto[]>([]);
-  const [loginsLoading, setLoginsLoading] = useState(true);
-  const [loginsErr, setLoginsErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void fetchAdminProfile().then((p) => {
-      if (p?.email) setProfileEmail(p.email);
-      if (p?.role) setProfileRole(p.role);
-    });
+    void fetchAdminProfile().then(setProfile);
   }, []);
 
-  const loadLogins = useCallback(async () => {
-    setLoginsLoading(true);
-    setLoginsErr(null);
-    try {
-      const r = await fetchMyPanelLogins();
-      setLogins(r.logins);
-    } catch (e) {
-      setLoginsErr((e as Error).message);
-      setLogins([]);
-    } finally {
-      setLoginsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadLogins();
-  }, [loadLogins]);
-
-  const handlePassword = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPasswordMsg(null);
-    setPasswordErr(null);
-    if (newPassword.length < 10) {
-      setPasswordErr('Новый пароль — не короче 10 символов');
+    setMsg(null);
+    setErr(null);
+    if (newPassword.length < 8) {
+      setErr('Новый пароль — минимум 8 символов');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordErr('Повтор пароля не совпадает');
+      setErr('Пароли не совпадают');
       return;
     }
-    setSaving(true);
+    setBusy(true);
     try {
-      await changePanelPassword(currentPassword, newPassword);
+      await changeAdminPassword(currentPassword, newPassword);
+      setMsg('Пароль обновлён');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordMsg('Пароль обновлён');
-    } catch (err) {
-      setPasswordErr((err as Error).message);
+    } catch (e2) {
+      setErr((e2 as Error).message);
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   };
 
@@ -94,119 +49,65 @@ export function SettingsPage() {
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Настройки</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Смена пароля и журнал ваших входов в панель за сегодня (до 25 записей, UTC).
+        Профиль администратора и смена пароля.
       </p>
 
-      <div className={`${fc.toolbar} ${isDark ? fc.toolbarDark : ''} ${sp.card}`}>
-        <h2 className={`${sp.cardTitle} ${isDark ? sp.cardTitleDark : ''}`}>Аккаунт</h2>
-        <p className={`${sp.metaLine} ${isDark ? sp.metaLineDark : ''}`}>
-          Email: <strong>{profileEmail || '—'}</strong>
+      <div className={`${s.card} ${isDark ? s.cardDark : ''}`}>
+        <h2 className={s.h2}>Аккаунт</h2>
+        <p className={s.line}>
+          <strong>Имя:</strong> {profile?.name || '—'}
         </p>
-        <p className={`${sp.metaLine} ${isDark ? sp.metaLineDark : ''}`}>
-          Роль: <strong>{formatAdminRoleRu(profileRole)}</strong>
+        <p className={s.line}>
+          <strong>Email:</strong> {profile?.email || '—'}
+        </p>
+        <p className={s.line}>
+          <strong>Роль:</strong> Админ
         </p>
       </div>
 
-      <div className={`${fc.toolbar} ${isDark ? fc.toolbarDark : ''} ${sp.card}`}>
-        <h2 className={`${sp.cardTitle} ${isDark ? sp.cardTitleDark : ''}`}>Сменить пароль</h2>
-        <p className={`${sp.hint} ${isDark ? sp.hintDark : ''}`}>
-          Укажите текущий пароль — без него смена не выполняется.
-        </p>
-        <form className={sp.form} onSubmit={(e) => void handlePassword(e)}>
-          <label className={sp.label}>
-            <span>Текущий пароль</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className={`${sp.input} ${isDark ? sp.inputDark : ''}`}
-              required
-            />
-          </label>
-          <label className={sp.label}>
-            <span>Новый пароль</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className={`${sp.input} ${isDark ? sp.inputDark : ''}`}
-              minLength={10}
-              required
-            />
-          </label>
-          <label className={sp.label}>
-            <span>Повтор нового пароля</span>
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className={`${sp.input} ${isDark ? sp.inputDark : ''}`}
-              minLength={10}
-              required
-            />
-          </label>
-          {passwordErr ? (
-            <p className={`${fc.alertError} ${isDark ? fc.alertErrorDark : ''}`} role="alert">
-              {passwordErr}
-            </p>
-          ) : null}
-          {passwordMsg ? (
-            <p className={`${sp.okMsg} ${isDark ? sp.okMsgDark : ''}`}>{passwordMsg}</p>
-          ) : null}
-          <button type="submit" className={fc.primaryBtn} disabled={saving}>
-            {saving ? 'Сохранение…' : 'Сохранить пароль'}
-          </button>
-        </form>
-      </div>
-
-      <div className={`${styles.tableWrap} ${isDark ? styles.tableWrapDark : ''}`}>
-        <div className={sp.tableHead}>
-          <h2 className={`${sp.cardTitle} ${isDark ? sp.cardTitleDark : ''}`}>Входы за сегодня</h2>
-          <button type="button" className={fc.ghostBtn} onClick={() => void loadLogins()}>
-            Обновить
-          </button>
-        </div>
-        {loginsErr ? (
-          <p className={`${fc.alertError} ${isDark ? fc.alertErrorDark : ''}`} role="alert">
-            {loginsErr}
-          </p>
-        ) : null}
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Время</th>
-              <th>IP</th>
-              <th>Регион</th>
-              <th>Способ</th>
-              <th>Браузер</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loginsLoading ? (
-              <tr>
-                <td colSpan={5}>Загрузка…</td>
-              </tr>
-            ) : logins.length === 0 ? (
-              <tr>
-                <td colSpan={5}>Сегодня успешных входов пока нет.</td>
-              </tr>
-            ) : (
-              logins.map((l) => (
-                <tr key={l.id}>
-                  <td>{new Date(l.createdAt).toLocaleString('ru-RU')}</td>
-                  <td>{l.ip || '—'}</td>
-                  <td>{l.countryCode || '—'}</td>
-                  <td>{loginMethodRu(l.loginMethod)}</td>
-                  <td className={sp.uaCell}>{shortenUa(l.userAgent)}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <form className={`${s.card} ${isDark ? s.cardDark : ''}`} onSubmit={(e) => void onSubmit(e)}>
+        <h2 className={s.h2}>Сменить пароль</h2>
+        <label className={s.label}>
+          Текущий пароль
+          <input
+            className={s.input}
+            type="password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
+          />
+        </label>
+        <label className={s.label}>
+          Новый пароль
+          <input
+            className={s.input}
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={8}
+          />
+        </label>
+        <label className={s.label}>
+          Повтор нового пароля
+          <input
+            className={s.input}
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+          />
+        </label>
+        {err ? <p className={s.error}>{err}</p> : null}
+        {msg ? <p className={s.ok}>{msg}</p> : null}
+        <button className={s.btn} type="submit" disabled={busy}>
+          {busy ? 'Сохранение…' : 'Сохранить пароль'}
+        </button>
+      </form>
     </section>
   );
 }

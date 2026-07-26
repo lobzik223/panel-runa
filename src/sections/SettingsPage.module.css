@@ -1,46 +1,37 @@
 .card {
-  flex-direction: column;
-  align-items: stretch;
-  margin-bottom: 20px;
-}
-
-.cardTitle {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.cardTitleDark {
-  color: #f3f4f6;
-}
-
-.metaLine {
-  margin: 0 0 6px;
-  font-size: 14px;
-  color: #4b5563;
-}
-
-.metaLineDark {
-  color: #9ca3af;
-}
-
-.hint {
-  margin: 0 0 16px;
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.45;
-}
-
-.hintDark {
-  color: #9ca3af;
-}
-
-.form {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(31, 2, 128, 0.08);
+  padding: 18px;
+  margin-bottom: 16px;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-width: 400px;
+  gap: 12px;
+}
+
+.cardDark {
+  background: #171722;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a3e;
+}
+
+.cardDark .h2 {
+  color: #eef0ff;
+}
+
+.line {
+  font-size: 14px;
+  color: #5b5f7a;
+}
+
+.cardDark .line {
+  color: #b6bad4;
 }
 
 .label {
@@ -48,71 +39,46 @@
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 600;
+  color: #1a1a3e;
+}
+
+.cardDark .label {
+  color: #d7daf0;
 }
 
 .input {
-  padding: 10px 14px;
+  padding: 11px 12px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  font-size: 14px;
-  background: #fff;
+  border: 1px solid rgba(31, 2, 128, 0.12);
+  background: #f7f8fc;
+  color: inherit;
 }
 
-.inputDark {
-  background: #25252b;
-  border-color: #374151;
-  color: #f3f4f6;
+.cardDark .input {
+  background: #12121a;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.okMsg {
-  margin: 0;
+.btn {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #495aee, #1f0280);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+}
+
+.error {
+  color: #a01e36;
   font-size: 13px;
+}
+
+.ok {
   color: #047857;
-}
-
-.okMsgDark {
-  color: #6ee7b7;
-}
-
-.tableHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 20px 0;
-}
-
-.uaCell {
-  max-width: 220px;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.code {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.youBadge {
-  font-size: 12px;
-  color: #6366f1;
-}
-
-.youBadgeDark {
-  color: #a5b4fc;
-}
-
-.rowHint {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: #9ca3af;
-}
-
-.rowHintDark {
-  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
 }

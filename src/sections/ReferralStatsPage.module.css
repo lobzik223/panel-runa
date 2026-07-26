@@ -1,58 +1,71 @@
-.tariffsBlock {
-  margin-top: 28px;
+.error {
+  color: #a01e36;
+  margin-bottom: 12px;
 }
 
-.tariffsBlockDark .tariffRow {
-  border-bottom-color: #2c2c2e;
+.table {
+  margin-top: 8px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(31, 2, 128, 0.08);
+  padding: 12px;
 }
 
-.tariffsTitle {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 16px;
+.tableDark {
+  background: #171722;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-.tariffsTitleDark {
-  color: #e5e7eb;
+.muted {
+  color: #6b7280;
+  padding: 12px;
 }
 
-.tariffsList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+.row {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(31, 2, 128, 0.06);
 }
 
-.tariffRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid #e5e7eb;
+.tableDark .row {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
-.tariffRow:last-child {
+.row:last-child {
   border-bottom: none;
 }
 
-.tariffLabel {
-  font-size: 15px;
-  color: #374151;
+.code {
+  font-weight: 800;
+  color: #1f0280;
 }
 
-.tariffLabelDark {
-  color: #e5e7eb;
+.tableDark .code {
+  color: #aeb8ff;
 }
 
-.tariffValue {
-  font-size: 16px;
+.meta {
+  font-size: 13px;
+  color: #5b5f7a;
+  margin-top: 4px;
+}
+
+.plans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.planChip {
+  font-size: 11px;
   font-weight: 600;
-  color: #1f2937;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(73, 90, 238, 0.12);
+  color: #1f0280;
 }
 
-.tariffValueDark {
-  color: #f3f4f6;
+.tableDark .planChip {
+  color: #c7ceff;
+  background: rgba(73, 90, 238, 0.22);
 }

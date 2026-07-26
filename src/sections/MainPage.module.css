@@ -1,9 +1,9 @@
 .apiError {
   font-size: 14px;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
+  color: #a01e36;
+  background: #fff1f3;
+  border: 1px solid #f3c0c8;
+  border-radius: 12px;
   padding: 12px 14px;
   margin-bottom: 20px;
   line-height: 1.45;
@@ -15,149 +15,80 @@
   border-color: rgba(248, 113, 113, 0.45);
 }
 
-.badgeNeutral {
+.chartCard {
+  margin-top: 8px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(31, 2, 128, 0.06);
+}
+
+.chartCardDark {
+  background: #171722;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.chartHeader {
+  margin-bottom: 16px;
+}
+
+.chartTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a3e;
+}
+
+.chartTitleDark {
+  color: #e8eaf6;
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 160px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.chartCol {
+  flex: 1;
+  min-width: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chartBarWrap {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.chartBar {
+  width: 70%;
+  max-width: 28px;
+  border-radius: 8px 8px 4px 4px;
+  background: linear-gradient(180deg, #495aee 0%, #1f0280 100%);
+  min-height: 4px;
+}
+
+.chartLabel,
+.chartCount {
   font-size: 11px;
-  font-weight: 500;
-  color: #6b7280;
-  background: #f3f4f6;
-  padding: 4px 8px;
-  border-radius: 6px;
+  color: #5b5f7a;
 }
 
-.badgeNeutralDark {
-  background: rgba(107, 114, 128, 0.25);
-  color: #9ca3af;
+.chartLabelDark,
+.chartCountDark {
+  color: #9aa0c0;
 }
 
-.periodBlock {
-  margin-top: 28px;
-}
-
-.periodBlockDark .barTrack {
-  background: #374151;
-}
-
-.blockTitle {
-  font-size: 17px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 6px;
-}
-
-.blockTitleDark {
-  color: #e5e7eb;
-}
-
-.blockHint {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-.blockHintDark {
-  color: #9ca3af;
-}
-
-.periodGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.periodRow {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  align-items: center;
-  gap: 20px;
-  padding: 14px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.periodRow:last-child {
-  border-bottom: none;
-}
-
-.periodBlockDark .periodRow {
-  border-bottom-color: #2c2c2e;
-}
-
-.periodLabel {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.periodLabelDark {
-  color: #e5e7eb;
-}
-
-.periodBars {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.barWrap {
-  display: grid;
-  grid-template-columns: 80px 1fr 48px;
-  align-items: center;
-  gap: 12px;
-}
-
-.barLabel {
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.barLabelDark {
-  color: #9ca3af;
-}
-
-.barTrack {
-  height: 8px;
-  border-radius: 4px;
-  background: #e5e7eb;
-  overflow: hidden;
-}
-
-.contentBlockDark .barTrack {
-  background: #374151;
-}
-
-.barFillCreated {
-  height: 100%;
-  border-radius: 4px;
-  background: #10b981;
-  min-width: 4px;
-  transition: width 0.25s ease;
-}
-
-.barFillDeleted {
-  height: 100%;
-  border-radius: 4px;
-  background: #ef4444;
-  min-width: 4px;
-  transition: width 0.25s ease;
-}
-
-.barValue {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1f2937;
-  text-align: right;
-}
-
-.barValueDark {
-  color: #e5e7eb;
-}
-
-@media (max-width: 640px) {
-  .periodRow {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .barWrap {
-    grid-template-columns: 70px 1fr 40px;
-  }
+.chartCount {
+  font-weight: 700;
+  color: #1a1a3e;
 }

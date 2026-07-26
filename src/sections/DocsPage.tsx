@@ -1,45 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import styles from './Section.module.css';
-import s from './UsersPage.module.css';
-import { type AdminUserDto, fetchBlockedUsers, patchAdminUser } from '@/lib/adminApi';
-import { useAdminRole } from '@/hooks/useAdminRole';
-
-function formatDateTimeRu(iso: string | null): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '—';
-  }
-}
+import s from './DocsPage.module.css';
+import {
+  type AdminUserListItem,
+  fetchAdminUsers,
+  formatDateTimeRu,
+  formatIntRu,
+  unblockAdminUser,
+} from '@/lib/adminApi';
 
 export function DocsPage() {
   const { theme } = useTheme();
-  const { canUnblockUsers } = useAdminRole();
   const isDark = theme === 'dark';
-  const dk = isDark ? ' ' + s.dk : '';
-
-  const [users, setUsers] = useState<AdminUserDto[]>([]);
+  const [items, setItems] = useState<AdminUserListItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetchBlockedUsers();
-      setUsers(r.users);
+      const data = await fetchAdminUsers({ blockedOnly: true, page: 1, limit: 500 });
+      setItems(data.items);
+      setTotal(data.total);
     } catch (e) {
-      setUsers([]);
       setError((e as Error).message);
+      setItems([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -49,15 +39,19 @@ export function DocsPage() {
     void load();
   }, [load]);
 
-  const unblock = async (userId: string) => {
-    if (!window.confirm('Разблокировать квоты этого пользователя? Он снова появится в разделе «Пользователи» как активный.')) return;
-    setBusyId(userId);
-    setError(null);
+  const onUnblock = async (id: number) => {
+    const password = window.prompt('Пароль админа для разблокировки:');
+    if (password == null) return;
+    if (!password.trim()) {
+      window.alert('Пароль обязателен');
+      return;
+    }
+    setBusyId(id);
     try {
-      await patchAdminUser(userId, { freeQuotaSuspended: false });
+      await unblockAdminUser(id, password.trim());
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      window.alert((e as Error).message);
     } finally {
       setBusyId(null);
     }
@@ -67,76 +61,35 @@ export function DocsPage() {
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Заблокированные</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Пользователи с заблокированными квотами. Причина задаётся при блокировке в разделе «Пользователи».
-        {canUnblockUsers ? ' После разблокировки аккаунт снова в общем списке.' : ' Роль «Финансовый аналитик» — только просмотр, без разбана.'}
+        Пользователи с активной блокировкой: {loading ? '…' : formatIntRu(total)}
       </p>
 
-      {error ? (
-        <p className={`${s.inlineError}${dk}`} role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <p className={s.error}>{error}</p> : null}
 
-      <div className={`${styles.tableWrap} ${isDark ? styles.tableWrapDark : ''}`}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Пользователь</th>
-              <th>Email</th>
-              <th>Причина блокировки</th>
-              <th>Обновлено</th>
-              {canUnblockUsers ? <th></th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={canUnblockUsers ? 5 : 4} className={s.emptyCell}>
-                  Загрузка…
-                </td>
-              </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={canUnblockUsers ? 5 : 4} className={s.emptyCell}>
-                  Нет заблокированных пользователей.
-                </td>
-              </tr>
-            ) : (
-              users.map((u) => (
-                <tr key={u.id}>
-                  <td>
-                    <div className={s.userCell}>
-                      <div className={`${s.avatarSmall}${dk}`}>
-                        <span>{(u.name || u.email || '?')[0].toUpperCase()}</span>
-                      </div>
-                      <div className={`${s.userName}${dk}`}>{u.name || '—'}</div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`${s.userEmail}${dk}`}>{u.email}</span>
-                  </td>
-                  <td>
-                    <span className={`${s.reasonCell}${dk}`}>{u.adminBlockReason?.trim() || '—'}</span>
-                  </td>
-                  <td>{formatDateTimeRu(u.updatedAt)}</td>
-                  {canUnblockUsers ? (
-                    <td>
-                      <button
-                        type="button"
-                        className={`${s.actionBtn} ${s.actionBtnGreen}`}
-                        style={{ padding: '8px 14px', fontSize: 13 }}
-                        disabled={busyId === u.id}
-                        onClick={() => void unblock(u.id)}
-                      >
-                        {busyId === u.id ? '…' : 'Разблокировать'}
-                      </button>
-                    </td>
-                  ) : null}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className={`${s.tableWrap} ${isDark ? s.tableWrapDark : ''}`}>
+        {loading ? <p className={s.muted}>Загрузка…</p> : null}
+        {!loading && items.length === 0 ? <p className={s.muted}>Нет заблокированных</p> : null}
+        {items.map((u) => (
+          <div key={u.id} className={`${s.row} ${isDark ? s.rowDark : ''}`}>
+            <div>
+              <div className={s.name}>{u.name || 'Без имени'}</div>
+              <div className={s.meta}>
+                #{u.id} · {u.email || '—'}
+              </div>
+              <div className={s.meta}>
+                до {formatDateTimeRu(u.blockedUntil)} · {u.blockReason || 'без причины'}
+              </div>
+            </div>
+            <button
+              type="button"
+              className={s.btn}
+              disabled={busyId === u.id}
+              onClick={() => void onUnblock(u.id)}
+            >
+              Разблокировать
+            </button>
+          </div>
+        ))}
       </div>
     </section>
   );

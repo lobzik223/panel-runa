@@ -1,23 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Routes, Route, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   IconHome,
   IconUsers,
   IconReferral,
   IconDocs,
-  IconServer,
-  IconRules,
   IconStats,
-  IconLink,
-  IconReview,
-  IconWallet,
-  IconCpu,
-  IconNote,
-  IconFilePdf,
   IconSettings,
-  IconShield,
-  IconOrg,
   IconLogout,
   IconSun,
   IconMoon,
@@ -26,14 +16,10 @@ import {
 } from '@/components/Icons';
 import { MainPage } from '@/sections/MainPage';
 import { UsersPage } from '@/sections/UsersPage';
-import { OrganizationsPage } from '@/sections/OrganizationsPage';
 import { ReferralCreatePage } from '@/sections/ReferralCreatePage';
 import { DocsPage } from '@/sections/DocsPage';
-import { ServerPage } from '@/sections/ServerPage';
-import { RulesPage } from '@/sections/RulesPage';
 import { ReferralStatsPage } from '@/sections/ReferralStatsPage';
-import { DataLinksPage } from '@/sections/DataLinksPage';
-import { ReviewsPage } from '@/sections/ReviewsPage';
+import { SettingsPage } from '@/sections/SettingsPage';
 import {
   formatAdminRoleRu,
   getAdminDisplayName,
@@ -42,42 +28,31 @@ import {
   setAdminToken,
   fetchAdminProfile,
 } from '@/lib/adminApi';
-import { useAdminRole } from '@/hooks/useAdminRole';
-import { FinancePaymentsPage } from '@/sections/finance/FinancePaymentsPage';
-import { FinanceAiCostsPage } from '@/sections/finance/FinanceAiCostsPage';
-import { FinanceAudiencePage } from '@/sections/finance/FinanceAudiencePage';
-import { FinanceNotesPage } from '@/sections/finance/FinanceNotesPage';
-import { FinanceReportsPage } from '@/sections/finance/FinanceReportsPage';
-import { SettingsPage } from '@/sections/SettingsPage';
-import { PanelRolesPage } from '@/sections/PanelRolesPage';
 import s from './Dashboard.module.css';
 
-const LOGO_SRC = '/seepromnt-logo.png';
+const LOGO_SRC = '/runa-wordmark.svg';
 
-type NavItem = { to: string; label: string; Icon: React.ComponentType<{ className?: string }>; sub?: boolean };
+type NavItem = { to: string; label: string; Icon: React.ComponentType<{ className?: string }> };
 
-const ADMIN_NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS: NavItem[] = [
   { to: '/panel', label: 'Главная', Icon: IconHome },
   { to: '/panel/users', label: 'Пользователи', Icon: IconUsers },
-  { to: '/panel/organizations', label: 'Организации', Icon: IconOrg },
-  { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
+  { to: '/panel/referral-create', label: 'Промокоды', Icon: IconReferral },
+  { to: '/panel/referral-stats', label: 'Статистика промо', Icon: IconStats },
   { to: '/panel/docs', label: 'Заблокированные', Icon: IconDocs },
-  { to: '/panel/server', label: 'Серверная часть', Icon: IconServer },
-  { to: '/panel/panel-roles', label: 'Роли', Icon: IconShield },
-  { to: '/panel/rules', label: 'Правила панели', Icon: IconRules },
   { to: '/panel/settings', label: 'Настройки', Icon: IconSettings },
-  { to: '/panel/referral-stats', label: 'Статистика', Icon: IconStats },
-  { to: '/panel/data-links', label: 'Графики и данные', Icon: IconLink },
-  { to: '/panel/reviews', label: 'Отзывы сайта', Icon: IconReview },
 ];
 
-const FINANCE_NAV_ITEMS: NavItem[] = [
-  { to: '/panel/finance/payments', label: 'Платежи', Icon: IconWallet, sub: true },
-  { to: '/panel/finance/ai-costs', label: 'Расходы ИИ', Icon: IconCpu, sub: true },
-  { to: '/panel/finance/audience', label: 'Аудитория', Icon: IconStats, sub: true },
-  { to: '/panel/finance/notes', label: 'Заметки', Icon: IconNote, sub: true },
-  { to: '/panel/finance/reports', label: 'Отчёты', Icon: IconFilePdf, sub: true },
-];
+const PAGE_TITLES: Record<string, string> = {
+  '/panel': 'Обзор',
+  '/panel/users': 'Пользователи',
+  '/panel/referral-create': 'Промокоды',
+  '/panel/referral-stats': 'Статистика промо',
+  '/panel/docs': 'Заблокированные',
+  '/panel/settings': 'Настройки',
+};
+
+const ADMIN_IDLE_LOGOUT_MS = 20 * 60 * 1000;
 
 function useClock() {
   const [time, setTime] = useState(new Date());
@@ -93,7 +68,12 @@ function formatTime(d: Date) {
 }
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 function getGreeting(d: Date) {
@@ -104,78 +84,17 @@ function getGreeting(d: Date) {
   return 'Добрый вечер';
 }
 
-const PAGE_TITLES: Record<string, string> = {
-  '/panel': 'Обзор',
-  '/panel/users': 'Пользователи',
-  '/panel/organizations': 'Организации',
-  '/panel/referral-create': 'Реферальная система',
-  '/panel/docs': 'Заблокированные',
-  '/panel/server': 'Серверная часть',
-  '/panel/panel-roles': 'Роли',
-  '/panel/rules': 'Правила панели',
-  '/panel/settings': 'Настройки',
-  '/panel/referral-stats': 'Статистика',
-  '/panel/data-links': 'Графики и данные',
-  '/panel/reviews': 'Отзывы сайта',
-  '/panel/finance/payments': 'Платежи',
-  '/panel/finance/ai-costs': 'Расходы ИИ',
-  '/panel/finance/audience': 'Аудитория',
-  '/panel/finance/notes': 'Заметки',
-  '/panel/finance/reports': 'Отчёты',
-};
-
-/** Автовыход: только после простоя без действий пользователя (см. список событий ниже). */
-const ADMIN_IDLE_LOGOUT_MS = 20 * 60 * 1000;
-
-function NavItemsList({
-  items,
-  closeMobileNav,
-}: {
-  items: NavItem[];
-  closeMobileNav: () => void;
-}) {
-  return (
-    <>
-      {items.map(({ to, label, Icon, sub }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === '/panel'}
-          className={({ isActive }: { isActive: boolean }) =>
-            `${s.navItem} ${sub ? s.navSubItem : ''} ${isActive ? s.navActive : ''}`
-          }
-          onClick={closeMobileNav}
-        >
-          <span className={s.navDot} />
-          <span className={s.navIcon}>
-            <Icon className={s.navSvg} />
-          </span>
-          <span className={s.navLabel}>{label}</span>
-        </NavLink>
-      ))}
-    </>
-  );
-}
-
 export function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
-  const {
-    isFinanceAnalyst,
-    canAccessFinance,
-    canViewUsersPanel,
-    canAccessServerPanel,
-    canManagePanelAccounts,
-  } = useAdminRole();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const now = useClock();
-  const [adminLabel, setAdminLabel] = useState(() => getAdminDisplayName() || 'Администратор');
+  const [adminLabel, setAdminLabel] = useState(() => getAdminDisplayName() || 'Админ');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    const jwt = getAdminToken()?.trim();
-    const devKey = import.meta.env.VITE_ADMIN_API_KEY?.trim();
-    if (!jwt && !devKey) {
+    if (!getAdminToken()?.trim()) {
       navigate('/', { replace: true });
     }
   }, [navigate]);
@@ -183,19 +102,16 @@ export function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     const jwt = getAdminToken()?.trim();
-    const devKey = import.meta.env.VITE_ADMIN_API_KEY?.trim();
-    if (!jwt && devKey) return;
     if (!jwt) return;
     void (async () => {
       const profile = await fetchAdminProfile();
       if (cancelled) return;
       if (!profile) {
+        setAdminToken(null);
         navigate('/', { replace: true });
         return;
       }
-      if (profile.name?.trim()) {
-        setAdminLabel(profile.name.trim());
-      }
+      if (profile.name?.trim()) setAdminLabel(profile.name.trim());
     })();
     return () => {
       cancelled = true;
@@ -212,7 +128,6 @@ export function Dashboard() {
       }, ADMIN_IDLE_LOGOUT_MS);
     };
     reset();
-    /** Только явные действия (клики/тап/клавиши); скролл не сбрасывает таймер — «ничего не нажимал». */
     const events: (keyof WindowEventMap)[] = ['mousedown', 'keydown', 'touchstart', 'click'];
     events.forEach((ev) => globalThis.addEventListener(ev, reset, { passive: true }));
     return () => {
@@ -220,54 +135,6 @@ export function Dashboard() {
       events.forEach((ev) => globalThis.removeEventListener(ev, reset));
     };
   }, [navigate]);
-
-  const handleLogout = () => {
-    setAdminToken(null);
-    navigate('/');
-  };
-  const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
-  const adminRoleLabel = formatAdminRoleRu(getAdminRole());
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  const FINANCE_ANALYST_NAV: NavItem[] = [
-    { to: '/panel/users', label: 'Пользователи', Icon: IconUsers },
-    { to: '/panel/organizations', label: 'Организации', Icon: IconOrg },
-    { to: '/panel/referral-create', label: 'Реферальная система', Icon: IconReferral },
-    { to: '/panel/docs', label: 'Заблокированные', Icon: IconDocs },
-    { to: '/panel/rules', label: 'Правила панели', Icon: IconRules },
-    { to: '/panel/referral-stats', label: 'Статистика', Icon: IconStats },
-    { to: '/panel/data-links', label: 'Графики и данные', Icon: IconLink },
-    { to: '/panel/reviews', label: 'Отзывы сайта', Icon: IconReview },
-    { to: '/panel/settings', label: 'Настройки', Icon: IconSettings },
-  ];
-
-  const visibleAdminNav = useMemo(() => {
-    if (isFinanceAnalyst) return FINANCE_ANALYST_NAV;
-    return ADMIN_NAV_ITEMS.filter((item) => {
-      if (item.to === '/panel/server') return canAccessServerPanel;
-      if (item.to === '/panel/panel-roles') return canManagePanelAccounts;
-      return true;
-    });
-  }, [isFinanceAnalyst, canAccessServerPanel, canManagePanelAccounts]);
-
-  useEffect(() => {
-    if (!isFinanceAnalyst) return;
-    const p = location.pathname;
-    const allowed =
-      p.startsWith('/panel/finance') ||
-      p === '/panel/users' ||
-      p === '/panel/organizations' ||
-      p === '/panel/referral-create' ||
-      p === '/panel/docs' ||
-      p === '/panel/rules' ||
-      p === '/panel/referral-stats' ||
-      p === '/panel/data-links' ||
-      p === '/panel/reviews' ||
-      p === '/panel/settings';
-    if (!allowed) {
-      navigate('/panel/finance/payments', { replace: true });
-    }
-  }, [isFinanceAnalyst, location.pathname, navigate]);
 
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
 
@@ -292,18 +159,15 @@ export function Dashboard() {
     };
   }, [mobileNavOpen]);
 
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Панель';
+  const adminRoleLabel = useMemo(() => formatAdminRoleRu(getAdminRole()), []);
+
   return (
     <div className={`${s.layout} ${isDark ? s.dark : ''}`}>
       {mobileNavOpen ? (
-        <div
-          className={s.navBackdrop}
-          role="presentation"
-          aria-hidden
-          onClick={closeMobileNav}
-        />
+        <div className={s.navBackdrop} role="presentation" aria-hidden onClick={closeMobileNav} />
       ) : null}
 
-      {/* ───── SIDEBAR ───── */}
       <aside className={`${s.sidebar} ${mobileNavOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarInner}>
           <div className={s.sidebarMobileHeader}>
@@ -318,42 +182,50 @@ export function Dashboard() {
             </button>
           </div>
 
-          {/* Logo */}
           <div className={s.logoBlock}>
             <div className={s.logoGlow} />
-            <img src={LOGO_SRC} alt="Seepromnt" className={s.logo} />
+            <img src={LOGO_SRC} alt="RUNA" className={s.logo} />
+            <span className={s.logoCaption}>Admin</span>
           </div>
 
-          {/* Nav */}
           <nav className={s.nav}>
-            <NavItemsList items={visibleAdminNav} closeMobileNav={closeMobileNav} />
-            {canAccessFinance ? (
-              <>
-                <div className={s.navGroupTitle}>Финансы</div>
-                <NavItemsList items={FINANCE_NAV_ITEMS} closeMobileNav={closeMobileNav} />
-              </>
-            ) : null}
+            {NAV_ITEMS.map(({ to, label, Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/panel'}
+                className={({ isActive }: { isActive: boolean }) =>
+                  `${s.navItem} ${isActive ? s.navActive : ''}`
+                }
+                onClick={closeMobileNav}
+              >
+                <span className={s.navDot} />
+                <span className={s.navIcon}>
+                  <Icon className={s.navSvg} />
+                </span>
+                <span className={s.navLabel}>{label}</span>
+              </NavLink>
+            ))}
           </nav>
 
-          {/* Footer */}
           <div className={s.sidebarFoot}>
-            {/* Theme */}
             <div className={s.themeSwitch}>
               <button
                 className={`${s.themeBtn} ${!isDark ? s.themeBtnOn : ''}`}
                 onClick={() => setTheme('light')}
+                type="button"
               >
                 <IconSun className={s.themeSvg} />
               </button>
               <button
                 className={`${s.themeBtn} ${isDark ? s.themeBtnOn : ''}`}
                 onClick={() => setTheme('dark')}
+                type="button"
               >
                 <IconMoon className={s.themeSvg} />
               </button>
             </div>
 
-            {/* Admin profile */}
             <div className={s.adminCard}>
               <div className={s.adminAvatar}>
                 <span>{adminLabel.charAt(0).toUpperCase()}</span>
@@ -364,7 +236,14 @@ export function Dashboard() {
               </div>
             </div>
 
-            <button className={s.logoutBtn} onClick={handleLogout}>
+            <button
+              className={s.logoutBtn}
+              type="button"
+              onClick={() => {
+                setAdminToken(null);
+                navigate('/');
+              }}
+            >
               <IconLogout className={s.logoutSvg} />
               <span>Выйти</span>
             </button>
@@ -372,7 +251,6 @@ export function Dashboard() {
         </div>
       </aside>
 
-      {/* ───── MAIN ───── */}
       <main className={s.main}>
         <header className={s.topBar}>
           <button
@@ -400,40 +278,15 @@ export function Dashboard() {
 
         <div className={s.content}>
           <Routes>
-            <Route
-              index
-              element={
-                isFinanceAnalyst ? <Navigate to="/panel/finance/payments" replace /> : <MainPage />
-              }
-            />
-            {canViewUsersPanel ? <Route path="users" element={<UsersPage />} /> : null}
-            {canViewUsersPanel ? <Route path="organizations" element={<OrganizationsPage />} /> : null}
-            {canViewUsersPanel || isFinanceAnalyst ? (
-              <>
-                <Route path="referral-create" element={<ReferralCreatePage />} />
-                <Route path="docs" element={<DocsPage />} />
-                <Route path="rules" element={<RulesPage />} />
-                <Route path="referral-stats" element={<ReferralStatsPage />} />
-                <Route path="data-links" element={<DataLinksPage />} />
-                <Route path="reviews" element={<ReviewsPage />} />
-              </>
-            ) : null}
-            {canAccessServerPanel ? <Route path="server" element={<ServerPage />} /> : null}
-            {canManagePanelAccounts ? <Route path="panel-roles" element={<PanelRolesPage />} /> : null}
+            <Route index element={<MainPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="referral-create" element={<ReferralCreatePage />} />
+            <Route path="referral-stats" element={<ReferralStatsPage />} />
+            <Route path="docs" element={<DocsPage />} />
             <Route path="settings" element={<SettingsPage />} />
-            {canAccessFinance ? (
-              <>
-                <Route path="finance/payments" element={<FinancePaymentsPage />} />
-                <Route path="finance/ai-costs" element={<FinanceAiCostsPage />} />
-                <Route path="finance/audience" element={<FinanceAudiencePage />} />
-                <Route path="finance/notes" element={<FinanceNotesPage />} />
-                <Route path="finance/reports" element={<FinanceReportsPage />} />
-              </>
-            ) : null}
           </Routes>
         </div>
       </main>
     </div>
   );
 }
-

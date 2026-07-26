@@ -2,18 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import styles from './Section.module.css';
 import mainStyles from './MainPage.module.css';
-import {
-  fetchDashboardStats,
-  formatIntRu,
-  formatPercentOneDecimal,
-  type DashboardStats,
-} from '@/lib/adminApi';
-
-function regWeekHint(pct: number | null): string {
-  if (pct === null) return 'нет сравнения с прошлой неделей';
-  const sign = pct >= 0 ? '+' : '';
-  return `${sign}${formatPercentOneDecimal(pct)}% к прошлой неделе (регистрации)`;
-}
+import { fetchDashboardStats, formatIntRu, type DashboardStats } from '@/lib/adminApi';
 
 export function MainPage() {
   const { theme } = useTheme();
@@ -48,23 +37,18 @@ export function MainPage() {
     };
   }, []);
 
-  const maxCreated = useMemo(() => {
-    if (!stats?.periods.length) return 1;
-    return Math.max(1, ...stats.periods.map((p) => p.created));
+  const maxChart = useMemo(() => {
+    if (!stats?.chartData.length) return 1;
+    return Math.max(1, ...stats.chartData.map((p) => p.count));
   }, [stats]);
 
-  const maxDeleted = useMemo(() => {
-    if (!stats?.periods.length) return 1;
-    return Math.max(1, ...stats.periods.map((p) => p.deleted));
-  }, [stats]);
-
-  const conversionOk = stats ? stats.conversionPercent >= stats.conversionGoalPercent : false;
+  const dbOk = stats?.serverStatus.database === 'ok';
 
   return (
     <section className={styles.section}>
       <h1 className={`${styles.title} ${isDark ? styles.titleDark : ''}`}>Главная</h1>
       <p className={`${styles.subtitle} ${isDark ? styles.subtitleDark : ''}`}>
-        Обзор панели Seepromnt: управление, реферальная программа и документация.
+        Обзор RUNA: регистрации, подписки и активность пользователей.
       </p>
 
       {error ? (
@@ -76,48 +60,44 @@ export function MainPage() {
       <div className={styles.cards}>
         <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
           <div className={styles.cardHeader}>
-            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Активных пользователей</span>
-            <span className={styles.cardBadge}>Сейчас</span>
-          </div>
-          <div className={styles.cardValue}>
-            {loading ? '…' : stats ? formatIntRu(stats.activeUsers) : '—'}
-          </div>
-          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
-            {loading ? 'загрузка…' : stats ? regWeekHint(stats.registrationsWeekOverWeekPercent) : '—'}
-          </div>
-        </div>
-        <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
-          <div className={styles.cardHeader}>
-            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Рефералов за месяц</span>
-            <span className={styles.cardBadgeOrange}>30 дн.</span>
-          </div>
-          <div className={styles.cardValue}>
-            {loading ? '…' : stats ? formatIntRu(stats.referralsLast30Days) : '—'}
-          </div>
-          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
-            новые аккаунты с referred_by
-          </div>
-        </div>
-        <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
-          <div className={styles.cardHeader}>
-            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Конверсия</span>
-            <span
-              className={
-                loading || !stats
-                  ? styles.cardBadge
-                  : conversionOk
-                    ? styles.cardBadgeGreen
-                    : styles.cardBadgeOrange
-              }
-            >
-              {loading || !stats ? '…' : conversionOk ? 'Цель достигнута' : 'Ниже цели'}
+            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>
+              Всего пользователей
             </span>
+            <span className={styles.cardBadge}>БД</span>
           </div>
           <div className={styles.cardValue}>
-            {loading ? '…' : stats ? `${formatPercentOneDecimal(stats.conversionPercent)}%` : '—'}
+            {loading ? '…' : stats ? formatIntRu(stats.totalUsers) : '—'}
           </div>
           <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
-            {stats ? `доля с активной подпиской · цель: ${formatPercentOneDecimal(stats.conversionGoalPercent)}%` : '—'}
+            все аккаунты в системе
+          </div>
+        </div>
+
+        <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
+          <div className={styles.cardHeader}>
+            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Онлайн</span>
+            <span className={styles.cardBadge}>10 мин</span>
+          </div>
+          <div className={styles.cardValue}>
+            {loading ? '…' : stats ? formatIntRu(stats.usersOnline) : '—'}
+          </div>
+          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
+            устройства с активностью
+          </div>
+        </div>
+
+        <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
+          <div className={styles.cardHeader}>
+            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>
+              Активные подписки
+            </span>
+            <span className={styles.cardBadgeGreen}>Premium</span>
+          </div>
+          <div className={styles.cardValue}>
+            {loading ? '…' : stats ? formatIntRu(stats.subscriptionsActive) : '—'}
+          </div>
+          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
+            status ACTIVE и срок не истёк
           </div>
         </div>
       </div>
@@ -125,75 +105,73 @@ export function MainPage() {
       <div className={styles.cards}>
         <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
           <div className={styles.cardHeader}>
-            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Пользователей онлайн</span>
-            <span className={styles.cardBadge}>Сейчас</span>
+            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Сегодня</span>
+            <span className={styles.cardBadgeOrange}>рег.</span>
           </div>
           <div className={styles.cardValue}>
-            {loading ? '…' : stats ? formatIntRu(stats.onlineUsers) : '—'}
+            {loading ? '…' : stats ? formatIntRu(stats.usersToday) : '—'}
           </div>
           <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
-            активность за 15 мин. (чат и задачи)
+            новые аккаунты за сутки
           </div>
         </div>
+
         <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
           <div className={styles.cardHeader}>
-            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Создано аккаунтов</span>
-            <span className={styles.cardBadgeOrange}>30 дн.</span>
+            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>
+              За 7 дней
+            </span>
+            <span className={styles.cardBadgeOrange}>рег.</span>
           </div>
           <div className={styles.cardValue}>
-            {loading ? '…' : stats ? formatIntRu(stats.accountsCreatedLast30Days) : '—'}
+            {loading ? '…' : stats ? formatIntRu(stats.newRegistrations) : '—'}
           </div>
-          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>за месяц</div>
+          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
+            регистрации за неделю
+          </div>
         </div>
+
         <div className={`${styles.card} ${isDark ? styles.cardDark : ''}`}>
           <div className={styles.cardHeader}>
-            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>Удалено аккаунтов</span>
-            <span className={`${mainStyles.badgeNeutral} ${isDark ? mainStyles.badgeNeutralDark : ''}`}>30 дн.</span>
+            <span className={`${styles.cardTitle} ${isDark ? styles.cardTitleDark : ''}`}>
+              Запросы на удаление
+            </span>
+            <span className={styles.cardBadge}>акк.</span>
           </div>
           <div className={styles.cardValue}>
-            {loading ? '…' : stats ? formatIntRu(stats.accountsDeletedLast30Days) : '—'}
+            {loading ? '…' : stats ? formatIntRu(stats.deletedAccounts) : '—'}
           </div>
-          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>за месяц (из журнала)</div>
+          <div className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>
+            deletionRequestedAt задан · БД: {loading ? '…' : dbOk ? 'ok' : 'error'}
+          </div>
         </div>
       </div>
 
-      <div
-        className={`${styles.contentBlock} ${isDark ? styles.contentBlockDark : ''} ${mainStyles.periodBlock} ${isDark ? mainStyles.periodBlockDark : ''}`}
-      >
-        <h2 className={`${mainStyles.blockTitle} ${isDark ? mainStyles.blockTitleDark : ''}`}>Аккаунты по периодам</h2>
-        <p className={`${mainStyles.blockHint} ${isDark ? mainStyles.blockHintDark : ''}`}>
-          Созданные и удалённые аккаунты за день, неделю и месяц (данные из БД).
-        </p>
-        <div className={mainStyles.periodGrid}>
-          {(stats?.periods ?? []).map((row) => (
-            <div key={row.periodKey} className={mainStyles.periodRow}>
-              <span className={`${mainStyles.periodLabel} ${isDark ? mainStyles.periodLabelDark : ''}`}>{row.periodLabel}</span>
-              <div className={mainStyles.periodBars}>
-                <div className={mainStyles.barWrap}>
-                  <span className={`${mainStyles.barLabel} ${isDark ? mainStyles.barLabelDark : ''}`}>Создано</span>
-                  <div className={mainStyles.barTrack}>
-                    <div
-                      className={mainStyles.barFillCreated}
-                      style={{ width: `${Math.min(100, (row.created / maxCreated) * 100)}%` }}
-                    />
-                  </div>
-                  <span className={`${mainStyles.barValue} ${isDark ? mainStyles.barValueDark : ''}`}>{row.created}</span>
+      <div className={`${mainStyles.chartCard} ${isDark ? mainStyles.chartCardDark : ''}`}>
+        <div className={mainStyles.chartHeader}>
+          <h2 className={`${mainStyles.chartTitle} ${isDark ? mainStyles.chartTitleDark : ''}`}>
+            Регистрации за 14 дней
+          </h2>
+        </div>
+        <div className={mainStyles.chartBars}>
+          {(stats?.chartData ?? []).map((row) => {
+            const h = Math.max(4, Math.round((row.count / maxChart) * 100));
+            return (
+              <div key={row.date} className={mainStyles.chartCol} title={`${row.date}: ${row.count}`}>
+                <div className={mainStyles.chartBarWrap}>
+                  <div className={mainStyles.chartBar} style={{ height: `${h}%` }} />
                 </div>
-                <div className={mainStyles.barWrap}>
-                  <span className={`${mainStyles.barLabel} ${isDark ? mainStyles.barLabelDark : ''}`}>Удалено</span>
-                  <div className={mainStyles.barTrack}>
-                    <div
-                      className={mainStyles.barFillDeleted}
-                      style={{ width: `${Math.min(100, (row.deleted / maxDeleted) * 100)}%` }}
-                    />
-                  </div>
-                  <span className={`${mainStyles.barValue} ${isDark ? mainStyles.barValueDark : ''}`}>{row.deleted}</span>
-                </div>
+                <span className={`${mainStyles.chartLabel} ${isDark ? mainStyles.chartLabelDark : ''}`}>
+                  {row.date.slice(5)}
+                </span>
+                <span className={`${mainStyles.chartCount} ${isDark ? mainStyles.chartCountDark : ''}`}>
+                  {row.count}
+                </span>
               </div>
-            </div>
-          ))}
-          {loading && !stats ? (
-            <p className={`${mainStyles.blockHint} ${isDark ? mainStyles.blockHintDark : ''}`}>Загрузка периодов…</p>
+            );
+          })}
+          {!loading && !stats?.chartData.length ? (
+            <p className={`${styles.cardHint} ${isDark ? styles.cardHintDark : ''}`}>Нет данных</p>
           ) : null}
         </div>
       </div>
